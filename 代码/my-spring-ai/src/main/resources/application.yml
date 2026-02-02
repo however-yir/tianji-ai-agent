@@ -1,0 +1,51 @@
+server:
+  port: 8099  #端口
+  tomcat:
+    uri-encoding: UTF-8   #服务编码
+spring:
+  application:
+    name: my-spring-ai
+  ai:
+    alibaba:
+      toolcalling:
+        toutiaonews:
+          enabled: true #开启头条新闻工具
+    dashscope:
+      api-key: ${ALIYUN_API_KEY}
+      chat:
+        enabled: false
+        options:
+          model: qwen-plus-2025-01-25
+      embedding:
+        options:
+          model: text-embedding-v3 #向量模型
+          dimensions: 1024 #向量维度维度
+        enabled: false
+    openai:
+      base-url: https://api.chatanywhere.tech
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          model: gpt-3.5-turbo
+        enabled: false #关闭openai的配置
+      embedding:
+        enabled: false #关闭openai的embedding，否则会启动报错，容器中会存在2个EmbeddingModel
+#          model: qwen-plus-2025-01-25
+#      base-url: https://dashscope.aliyuncs.com/compatible-mode
+#      api-key: ${ALIYUN_API_KEY}
+    ollama:
+      base-url: http://192.168.150.101:11434
+      chat:
+        model: "qwen2.5:0.5b"
+        enabled: true
+      embedding:
+        enabled: true
+        model: rjmalagon/gte-qwen2-1.5b-instruct-embed-f16:latest
+logging:
+  level:
+    org:
+      springframework:
+        ai:
+          chat:
+            client:
+              advisor: DEBUG
