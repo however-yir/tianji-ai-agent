@@ -6,7 +6,7 @@
 [![Maven](https://img.shields.io/badge/Build-Maven-C71A36?logo=apachemaven)](https://maven.apache.org/)
 [![Status](https://img.shields.io/badge/Status-Learning%20Project-blue)](#)
 
-这是一个面向真实业务场景的 AI 智能体学习项目，目标不是“只会调用模型接口”，而是完整走通：
+这是一个面向真实业务场景的 AI 智能体工程项目，目标不是“只会调用模型接口”，而是完整走通：
 从大模型接入、Prompt 设计、Tool Calling、RAG 检索增强、会话记忆、路由工作流多智能体，到 MCP 与多模态语音能力，再到前端原型与 UI 交互设计落地。
 
 仓库整合了三类核心资产：
