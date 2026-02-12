@@ -1,5 +1,9 @@
 # 天机 AI 智能体开发实战（代码 + 原型 + UI）
 
+🔥 A Spring AI agent engineering project based on Java, Spring Boot, MCP, and RAG workflows.  
+🚀 Built for prompt engineering, tool calling, conversation memory, workflow routing, and multimodal AI assistants.  
+⭐ Includes backend code, web prototypes, and UI assets for practical agent system development.
+
 [![Java](https://img.shields.io/badge/Java-17-007396?logo=openjdk)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.5-6DB33F?logo=springboot)](https://spring.io/projects/spring-boot)
 [![Spring AI](https://img.shields.io/badge/Spring%20AI-1.0.0--M6-6DB33F)](https://spring.io/projects/spring-ai)
