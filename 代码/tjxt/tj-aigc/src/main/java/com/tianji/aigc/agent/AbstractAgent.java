@@ -132,7 +132,7 @@ public abstract class AbstractAgent implements Agent {
     private ChatClient.ChatClientRequestSpec getChatClientRequest(String sessionId, String requestId, String question) {
         return this.dashScopeChatClient.prompt()
                 .system(promptSystem -> promptSystem.text(this.systemMessage()).params(this.systemMessageParams()))
-                .advisors(advisor -> advisor.advisors(this.advisors()).params(this.advisorParams(sessionId, requestId)))
+                .advisors(advisor -> advisor.advisors(this.advisors(question)).params(this.advisorParams(sessionId, requestId)))
                 .tools(this.tools())
                 .toolContext(this.toolContext(sessionId, requestId))
                 .user(question);

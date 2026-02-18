@@ -54,10 +54,11 @@ public class RecommendAgent extends AbstractAgent {
     }
 
     @Override
-    public List<Advisor> advisors() {
+    public List<Advisor> advisors(String question) {
         SearchRequest searchRequest = SearchRequest.builder()
-                .query("")
-                .topK(999)
+                .query(question)
+                .topK(5)
+                .similarityThreshold(0.65)
                 .build();
         return List.of(new QuestionAnswerAdvisor(vectorStore, searchRequest));
     }

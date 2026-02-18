@@ -39,8 +39,12 @@ public class ConsultAgent extends AbstractAgent {
     }
 
     @Override
-    public List<Advisor> advisors() {
-        var searchRequest = SearchRequest.builder().query("").topK(999).build();
+    public List<Advisor> advisors(String question) {
+        var searchRequest = SearchRequest.builder()
+                .query(question)
+                .topK(5)
+                .similarityThreshold(0.65)
+                .build();
         return List.of(new QuestionAnswerAdvisor(vectorStore, searchRequest));
     }
 

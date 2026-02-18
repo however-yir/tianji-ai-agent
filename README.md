@@ -214,6 +214,7 @@ flowchart TD
 
 - `CourseTools` 与 `OrderTools` 调用内部微服务
 - 通过 `ToolResultHolder` 把参数化结果回写到事件流
+- `ToolResultHolder` 已补并发安全和过期清理，降低多工具并发写入与临时数据堆积风险
 - 前端可据此渲染课程卡片、下单信息等结构化内容
 
 3. 可中断的流式输出
@@ -221,7 +222,12 @@ flowchart TD
 - `GENERATE_STATUS` 跟踪会话生成状态
 - 支持中途停止并保存已生成内容到历史记忆
 
-4. Redis 会话记忆
+4. 收敛式 RAG 检索
+
+- `ConsultAgent`、`RecommendAgent` 与增强型 `ChatServiceImpl` 已改为使用当前问题作为检索 query
+- 默认将召回数量收敛到 `topK=5`，并加入相似度阈值，减少“把整库塞进上下文”带来的噪声和成本
+
+5. Redis 会话记忆
 
 - `RedisChatMemory` 统一消息序列化存储
 - 支持会话读取、清理、以及路由中间消息优化
@@ -356,7 +362,7 @@ rg -n --pcre2 'eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}' .
 
 ### Q3：工具调用结果为什么没在前端展示成卡片？
 
-请确认前端是否消费了 `PARAM` 类型事件，并按 `ToolResultHolder` 回传字段渲染结构化 UI。
+请确认前端是否消费了 `PARAM` 类型事件，并按 `ToolResultHolder` 回传字段渲染结构化 UI。当前实现已经给工具结果缓存增加了并发安全与 TTL 清理，如果仍然丢卡片，优先检查前端事件消费顺序。
 
 ### Q4：MCP 部分怎么扩展到自定义工具？
 
@@ -399,9 +405,10 @@ rg -n --pcre2 'eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}' .
 当前实现采用了多层拆分：
 
 - 用 `RouteAgent` 做意图识别，再把请求分发给 `RecommendAgent / BuyAgent / ConsultAgent / KnowledgeAgent`，让多智能体职责清晰；
-- 用 `CourseTools`、`OrderTools` 承接真实业务动作，并通过 `ToolResultHolder` 把工具结果回写给前端，支持卡片化展示；
+- 用 `CourseTools`、`OrderTools` 承接真实业务动作，并通过线程安全、带过期清理的 `ToolResultHolder` 把工具结果回写给前端，支持卡片化展示；
 - 用 `RedisChatMemory` 维护会话消息，支持历史读取、上下文延续和中途停止生成后的保存；
 - 通过流式接口返回模型输出，同时跟踪生成状态，保证前端可以做实时渲染和中断控制；
+- 在咨询与推荐场景中使用“问题驱动 + 阈值约束”的 RAG 检索，避免召回噪声过大；
 - 将 RAG、Tool、会话、语音、多模态等能力拆到不同模块，降低耦合，便于逐步演进。
 
 ### 后续优化方向
