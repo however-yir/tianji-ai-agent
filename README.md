@@ -240,10 +240,32 @@ flowchart TD
 
 - JDK `17+`
 - Maven `3.9+`
-- Redis / MySQL / Elasticsearch（按模块启用）
+- Redis / MySQL / Elasticsearch（按模块启用，可用 `docker-compose.dev.yml` 快速启动）
 - 可用的大模型 API Key
 
-### 6.2 环境变量
+### 6.2 本地中间件启动（推荐）
+
+在仓库根目录执行：
+
+```bash
+docker compose -f docker-compose.dev.yml up -d
+```
+
+按需启用 Nacos 与 Elasticsearch：
+
+```bash
+docker compose -f docker-compose.dev.yml --profile nacos --profile search up -d
+```
+
+### 6.3 环境变量
+
+先复制模板：
+
+```bash
+cp .env.example .env
+```
+
+然后按需导出/覆盖（示例）：
 
 ```bash
 # 大模型（阿里百炼 / OpenAI 兼容）
@@ -263,7 +285,7 @@ export ALI_SMS_ACCESS_ID="your_access_id"
 export ALI_SMS_ACCESS_SECRET="your_access_secret"
 ```
 
-### 6.3 模块级启动示例
+### 6.4 模块级启动示例
 
 1) OpenAI Java 示例
 
@@ -303,7 +325,7 @@ mvn -pl tj-aigc -am -DskipTests spring-boot:run
 - 若使用 JDK 23+，仓库已在 `代码/tjxt/pom.xml` 的 `maven-compiler-plugin` 中显式配置 `<proc>full</proc>`，用于确保 Lombok 注解处理正常。
 - 若需要在 `代码/tjxt/tj-aigc` 目录单独执行 `mvn -DskipTests compile`，请先在 `代码/tjxt` 根目录执行 `mvn -pl tj-aigc -am -DskipTests install`，预装兄弟模块产物（如 `tj-api`、`tj-auth-resource-sdk`）。
 
-### 6.4 接口验证示例
+### 6.5 接口验证示例
 
 以 `my-spring-ai` 为例：
 
