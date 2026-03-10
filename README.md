@@ -1,4 +1,4 @@
-# 天机 AI 智能体开发实战（代码 + 原型 + UI）
+# tianji-ai-agent
 
 🔥 A Spring AI agent engineering project based on Java, Spring Boot, MCP, and RAG workflows.  
 🚀 Built for prompt engineering, tool calling, conversation memory, workflow routing, and multimodal AI assistants.  
