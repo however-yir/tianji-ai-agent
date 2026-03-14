@@ -27,4 +27,4 @@ spring:
           connections:
             server1:
               url: http://localhost:8101 # 指定MCP Server服务器地址
-#              url: https://mcp.amap.com?key=c8fc9720159ff49cfe396954ea44370f # 指定MCP Server服务器地址
+#              url: https://mcp.amap.com?key=${AMAP_MCP_KEY} # 指定MCP Server服务器地址
