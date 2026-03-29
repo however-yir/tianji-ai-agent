@@ -1,0 +1,25 @@
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Java / Maven
+**/target/
+**/logs/
+
+# Node
+**/node_modules/
+
+# Env / secrets
+.env
+.env.*
+*.pem
+*.key
+*.p12
+
+# Local runtime files
+*.log
+*.pid

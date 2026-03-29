@@ -1,0 +1,14 @@
+server:
+  port: 8101  #端口
+  tomcat:
+    uri-encoding: UTF-8   #服务编码
+spring:
+  application:
+    name: my-spring-ai-mcp-server
+  ai:
+    mcp:
+      server:
+        enabled: true
+        name: ${spring.application.name}
+        version: 1.0.0
+        type: ASYNC # 服务类型 异步，支持 SYNC 和 ASYNC
