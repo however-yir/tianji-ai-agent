@@ -298,6 +298,11 @@ mvn -pl tj-aigc -am -DskipTests spring-boot:run
 
 说明：`tjxt` 依赖完整中间件与多模块协同，建议结合课程环境（Nacos/Redis/ES/MySQL/Gateway）运行。
 
+构建补充：
+
+- 若使用 JDK 23+，仓库已在 `代码/tjxt/pom.xml` 的 `maven-compiler-plugin` 中显式配置 `<proc>full</proc>`，用于确保 Lombok 注解处理正常。
+- 若需要在 `代码/tjxt/tj-aigc` 目录单独执行 `mvn -DskipTests compile`，请先在 `代码/tjxt` 根目录执行 `mvn -pl tj-aigc -am -DskipTests install`，预装兄弟模块产物（如 `tj-api`、`tj-auth-resource-sdk`）。
+
 ### 6.4 接口验证示例
 
 以 `my-spring-ai` 为例：
