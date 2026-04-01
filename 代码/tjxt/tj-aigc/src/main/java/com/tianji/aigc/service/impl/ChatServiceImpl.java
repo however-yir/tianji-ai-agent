@@ -64,8 +64,9 @@ public class ChatServiceImpl implements ChatService {
                 )
                 .advisors(advisor -> advisor
                         .advisors(new QuestionAnswerAdvisor(vectorStore, SearchRequest.builder()
-                                .query("") // 查询条件，为空代表全部
-                                .topK(999) // 总共查询多少条数据
+                                .query(question)
+                                .topK(5)
+                                .similarityThreshold(0.65)
                                 .build()))
                         .param(AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY, conversationId))
                 .toolContext(Map.of(Constant.REQUEST_ID, requestId, Constant.USER_ID, userId)) //在工具上下文中传递请求id
