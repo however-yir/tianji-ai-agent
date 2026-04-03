@@ -1,14 +1,13 @@
-name: CI
+name: tianji-ai-agent CI
 
 on:
   push:
-    branches: [main]
+    branches: ["main"]
   pull_request:
 
 jobs:
-  maven-smoke:
+  compile-core-module:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,5 +19,5 @@ jobs:
           java-version: '17'
           cache: maven
 
-      - name: Maven smoke build (openai-java-demo)
-        run: mvn -B -ntp -f "代码/openai-java-demo/pom.xml" -DskipTests compile
+      - name: Compile my-spring-ai module
+        run: mvn -B -ntp -f 代码/my-spring-ai/pom.xml -DskipTests package
