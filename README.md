@@ -458,9 +458,9 @@ rg -n --pcre2 'eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}' .
 
 ## 简历改造清单
 
-- 追踪文件：[docs/resume-upgrade-checklist.md](/Users/liuzhuoran/Documents/Playground/tianji-ai-agent/docs/resume-upgrade-checklist.md)
-- 评测清单：[docs/evaluation/multi-agent-eval-checklist.md](/Users/liuzhuoran/Documents/Playground/tianji-ai-agent/docs/evaluation/multi-agent-eval-checklist.md)
-- 评测模板脚本：[scripts/evaluation/generate_agent_eval_template.py](/Users/liuzhuoran/Documents/Playground/tianji-ai-agent/scripts/evaluation/generate_agent_eval_template.py)
-- CI 配置：[.github/workflows/ci.yml](/Users/liuzhuoran/Documents/Playground/tianji-ai-agent/.github/workflows/ci.yml)
+- 追踪文件：[docs/resume-upgrade-checklist.md](docs/resume-upgrade-checklist.md)
+- 评测清单：[docs/evaluation/multi-agent-eval-checklist.md](docs/evaluation/multi-agent-eval-checklist.md)
+- 评测模板脚本：[scripts/evaluation/generate_agent_eval_template.py](scripts/evaluation/generate_agent_eval_template.py)
+- CI 配置：[.github/workflows/ci.yml](.github/workflows/ci.yml)
 
 本轮已落地：多智能体评测与工程化基线文件，便于继续补路由测试和可观测性。
