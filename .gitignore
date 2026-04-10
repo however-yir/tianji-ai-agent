@@ -28,3 +28,11 @@
 # External design/prototype asset packs (kept out of main repo)
 天机AI助手/
 天机agent V0.3/
+
+# --- Baseline Ignore Rules ---
+__pycache__/
+*.py[cod]
+node_modules/
+dist/
+build/
+target/
