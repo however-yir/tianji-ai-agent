@@ -44,7 +44,7 @@ tj:
       vodValidSeconds: 7776000
       region: "ap-shanghai"
       procedure: "wisehub-base"
-      urlKey: "HZFlxjPYoOm5AfShupOx"
+      urlKey: ${TJ_TENCENT_VOD_URL_KEY:REPLACE_ME}
       pfcg: "basicDrmPreset"
     cos:
       enable: true
