@@ -85,7 +85,17 @@ jobs:
             ran=1
           fi
 
-          if [ -f pom.xml ]; then
+          if [ -f "代码/tjxt/pom.xml" ]; then
+            mvn -B -ntp -f 代码/tjxt/pom.xml -pl tj-aigc -am -DskipTests validate
+            ran=1
+          fi
+
+          if [ -f "代码/my-spring-ai/pom.xml" ]; then
+            mvn -B -ntp -f 代码/my-spring-ai/pom.xml -DskipTests validate
+            ran=1
+          fi
+
+          if [ -f pom.xml ] && [ ! -f "代码/tjxt/pom.xml" ] && [ ! -f "代码/my-spring-ai/pom.xml" ]; then
             if [ -f mvnw ]; then chmod +x mvnw; ./mvnw -B -ntp -DskipTests validate; else mvn -B -ntp -DskipTests validate; fi
             ran=1
           fi
@@ -115,7 +125,17 @@ jobs:
             ran=1
           fi
 
-          if [ -f pom.xml ]; then
+          if [ -f "代码/tjxt/pom.xml" ]; then
+            mvn -B -ntp -f 代码/tjxt/pom.xml -pl tj-aigc -am -DskipTests package
+            ran=1
+          fi
+
+          if [ -f "代码/my-spring-ai/pom.xml" ]; then
+            mvn -B -ntp -f 代码/my-spring-ai/pom.xml -DskipTests package
+            ran=1
+          fi
+
+          if [ -f pom.xml ] && [ ! -f "代码/tjxt/pom.xml" ] && [ ! -f "代码/my-spring-ai/pom.xml" ]; then
             if [ -f mvnw ]; then chmod +x mvnw; ./mvnw -B -ntp -DskipTests package; else mvn -B -ntp -DskipTests package; fi
             ran=1
           fi
@@ -150,7 +170,12 @@ jobs:
             ran=1
           fi
 
-          if [ -f pom.xml ]; then
+          if [ -f "代码/tjxt/tj-aigc/pom.xml" ]; then
+            mvn -B -ntp -f 代码/tjxt/tj-aigc/pom.xml test
+            ran=1
+          fi
+
+          if [ -f pom.xml ] && [ ! -f "代码/tjxt/tj-aigc/pom.xml" ]; then
             if [ -f mvnw ]; then chmod +x mvnw; ./mvnw -B -ntp test; else mvn -B -ntp test; fi
             ran=1
           fi

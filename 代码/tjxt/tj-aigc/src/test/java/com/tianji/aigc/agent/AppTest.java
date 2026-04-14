@@ -6,14 +6,15 @@ import com.alibaba.dashscope.app.ApplicationParam;
 import com.alibaba.dashscope.app.ApplicationResult;
 import com.alibaba.dashscope.utils.JsonUtils;
 import io.reactivex.Flowable;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 
+@Tag("manual-integration")
 public class AppTest {
 
     @Test
-
     public void testAppCall() throws Exception {
         // 构造业务参数
         String token = requireEnv("BAILIAN_USER_TOKEN");

@@ -6,7 +6,26 @@ on:
   pull_request:
 
 jobs:
-  compile-core-module:
+  build-tjxt-aigc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Compile tjxt + tj-aigc dependency chain
+        run: mvn -B -ntp -f 代码/tjxt/pom.xml -pl tj-aigc -am -DskipTests package
+
+      - name: Run tj-aigc unit tests
+        run: mvn -B -ntp -f 代码/tjxt/tj-aigc/pom.xml test
+
+  compile-my-spring-ai:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
