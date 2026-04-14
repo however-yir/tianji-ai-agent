@@ -1,9 +1,6 @@
 package com.tianji.aigc.config;
 
-import com.tianji.aigc.advisor.RecordOptimizationAdvisor;
 import com.tianji.aigc.memory.RedisChatMemory;
-import com.tianji.aigc.tools.CourseTools;
-import com.tianji.aigc.tools.OrderTools;
 import com.tianji.common.constants.Constant;
 import com.tianji.common.utils.WebUtils;
 import org.springframework.ai.chat.client.ChatClient;
@@ -13,6 +10,7 @@ import org.springframework.ai.chat.client.advisor.api.Advisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.retry.RetryCallback;
 import org.springframework.retry.RetryContext;
 import org.springframework.retry.RetryListener;
@@ -59,15 +57,10 @@ public class SpringAIConfig {
      */
     @Bean
     public ChatClient dashScopeChatClient(ChatClient.Builder dashScopeChatClientBuilder,
-                                 Advisor loggerAdvisor, // 日志记录器
-                                 Advisor messageChatMemoryAdvisor, // 会话记忆
-                                 CourseTools courseTools,
-                                 OrderTools orderTools, // 预下单工具
-                                 Advisor recordOptimizationAdvisor
+                                 Advisor loggerAdvisor // 日志记录器
     ) {
         return dashScopeChatClientBuilder
-                .defaultAdvisors(loggerAdvisor, messageChatMemoryAdvisor, recordOptimizationAdvisor) //添加 Advisor 功能增强
-                // .defaultTools(courseTools, orderTools) // 添加课程、预下单工具
+                .defaultAdvisors(loggerAdvisor)
                 .build();
     }
 
@@ -89,20 +82,12 @@ public class SpringAIConfig {
     }
 
     @Bean
-    public ChatMemory redisChatMemory() {
-        return new RedisChatMemory();
+    public RedisChatMemory redisChatMemory(StringRedisTemplate stringRedisTemplate) {
+        return new RedisChatMemory(stringRedisTemplate);
     }
 
     @Bean
-    public Advisor messageChatMemoryAdvisor(ChatMemory redisChatMemory) {
+    public Advisor messageChatMemoryAdvisor(RedisChatMemory redisChatMemory) {
         return new MessageChatMemoryAdvisor(redisChatMemory);
-    }
-
-    /**
-     * 优化对话历史记录
-     */
-    @Bean
-    public Advisor recordOptimizationAdvisor(RedisChatMemory redisChatMemory) {
-        return new RecordOptimizationAdvisor(redisChatMemory);
     }
 }

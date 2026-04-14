@@ -86,6 +86,13 @@ public interface Agent {
     }
 
     /**
+     * 是否启用会话记忆。
+     */
+    default boolean useChatMemory() {
+        return true;
+    }
+
+    /**
      * 创建并返回一个Advisor的空Map对象。
      *
      * @param sessionId 会话标识符

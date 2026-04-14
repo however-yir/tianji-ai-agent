@@ -23,4 +23,9 @@ public class RouteAgent extends AbstractAgent {
     public String systemMessage() {
         return this.systemPromptConfig.getRouteAgentSystemMessage().get();
     }
+
+    @Override
+    public boolean useChatMemory() {
+        return false;
+    }
 }

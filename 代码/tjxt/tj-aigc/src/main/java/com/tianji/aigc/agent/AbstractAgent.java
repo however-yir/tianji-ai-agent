@@ -14,10 +14,13 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor;
+import org.springframework.ai.chat.client.advisor.api.Advisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import reactor.core.publisher.Flux;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,6 +34,8 @@ public abstract class AbstractAgent implements Agent {
     private ChatSessionService chatSessionService;
     @Resource
     private ChatMemory chatMemory;
+    @Resource(name = "messageChatMemoryAdvisor")
+    private Advisor messageChatMemoryAdvisor;
 
     // 输出结束的标记
     public static final ChatEventVO STOP_EVENT = ChatEventVO.builder().eventType(ChatEventTypeEnum.STOP.getValue()).build();
@@ -130,9 +135,15 @@ public abstract class AbstractAgent implements Agent {
     }
 
     private ChatClient.ChatClientRequestSpec getChatClientRequest(String sessionId, String requestId, String question) {
+        List<Advisor> advisors = new ArrayList<>();
+        if (this.useChatMemory()) {
+            advisors.add(this.messageChatMemoryAdvisor);
+        }
+        advisors.addAll(this.advisors(question));
+
         return this.dashScopeChatClient.prompt()
                 .system(promptSystem -> promptSystem.text(this.systemMessage()).params(this.systemMessageParams()))
-                .advisors(advisor -> advisor.advisors(this.advisors(question)).params(this.advisorParams(sessionId, requestId)))
+                .advisors(advisor -> advisor.advisors(advisors).params(this.advisorParams(sessionId, requestId)))
                 .tools(this.tools())
                 .toolContext(this.toolContext(sessionId, requestId))
                 .user(question);

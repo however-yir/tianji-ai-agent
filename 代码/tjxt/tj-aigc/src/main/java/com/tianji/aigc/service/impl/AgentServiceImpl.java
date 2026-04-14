@@ -1,6 +1,5 @@
 package com.tianji.aigc.service.impl;
 
-import cn.hutool.extra.spring.SpringUtil;
 import com.tianji.aigc.agent.AbstractAgent;
 import com.tianji.aigc.agent.Agent;
 import com.tianji.aigc.config.SystemPromptConfig;
@@ -13,14 +12,26 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
+import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class AgentServiceImpl implements ChatService {
 
     private final ChatClient openAiChatClient;
     private final SystemPromptConfig systemPromptConfig;
+    private final Map<AgentTypeEnum, Agent> agentRegistry;
+
+    public AgentServiceImpl(ChatClient openAiChatClient,
+                            SystemPromptConfig systemPromptConfig,
+                            List<Agent> agents) {
+        this.openAiChatClient = openAiChatClient;
+        this.systemPromptConfig = systemPromptConfig;
+        this.agentRegistry = agents.stream()
+                .collect(Collectors.toUnmodifiableMap(Agent::getAgentType, Function.identity()));
+    }
 
     @Override
     public Flux<ChatEventVO> chat(String question, String sessionId) {
@@ -44,23 +55,18 @@ public class AgentServiceImpl implements ChatService {
     }
 
     private Agent findAgentByType(AgentTypeEnum agentTypeEnum) {
-        // 根据智能体类型，在Spring容器中查找对应的bean
         if (agentTypeEnum == null) {
             return null;
         }
-
-        Map<String, Agent> agentMap = SpringUtil.getBeansOfType(Agent.class);
-        for (Agent agent : agentMap.values()) {
-            if (agent.getAgentType() == agentTypeEnum) {
-                return agent;
-            }
-        }
-        return null;
+        return this.agentRegistry.get(agentTypeEnum);
     }
 
     @Override
     public void stop(String sessionId) {
-        this.findAgentByType(AgentTypeEnum.ROUTE).stop(sessionId);
+        Agent routeAgent = this.findAgentByType(AgentTypeEnum.ROUTE);
+        if (routeAgent != null) {
+            routeAgent.stop(sessionId);
+        }
     }
 
     @Override
