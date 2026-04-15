@@ -97,6 +97,8 @@
                     <configuration>
                         <source>17</source> <!-- depending on your project -->
                         <target>17</target> <!-- depending on your project -->
+                        <!-- JDK 23+ 默认不再自动执行注解处理器，显式开启以保证 Lombok 生效 -->
+                        <proc>full</proc>
                     </configuration>
                 </plugin>
             </plugins>

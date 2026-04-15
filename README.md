@@ -288,6 +288,13 @@ export AMAP_MAPS_API_KEY="your_amap_key"
 # 短信模块（已改为环境变量占位）
 export ALI_SMS_ACCESS_ID="your_access_id"
 export ALI_SMS_ACCESS_SECRET="your_access_secret"
+
+# tj-aigc 本地运行（不依赖 Nacos 时可直接使用本地默认值）
+export AIGC_DATASOURCE_URL="jdbc:mysql://127.0.0.1:3306/tj_aigc?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false"
+export AIGC_DATASOURCE_USERNAME="root"
+export AIGC_DATASOURCE_PASSWORD="123456"
+export AIGC_REDIS_HOST="127.0.0.1"
+export AIGC_REDIS_PORT="6379"
 ```
 
 ### 6.4 模块级启动示例
@@ -320,7 +327,7 @@ mvn -DskipTests spring-boot:run
 
 ```bash
 cd 代码/tjxt
-mvn -pl tj-aigc -am -DskipTests spring-boot:run
+mvn -DskipTests -f tj-aigc/pom.xml spring-boot:run
 ```
 
 说明：`tjxt` 依赖完整中间件与多模块协同，建议结合课程环境（Nacos/Redis/ES/MySQL/Gateway）运行。

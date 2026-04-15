@@ -3,6 +3,7 @@ package com.tianji.aigc.config;
 import com.tianji.aigc.memory.RedisChatMemory;
 import com.tianji.common.constants.Constant;
 import com.tianji.common.utils.WebUtils;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
@@ -56,8 +57,8 @@ public class SpringAIConfig {
      * 配置 ChatClient
      */
     @Bean
-    public ChatClient dashScopeChatClient(ChatClient.Builder dashScopeChatClientBuilder,
-                                 Advisor loggerAdvisor // 日志记录器
+    public ChatClient dashScopeChatClient(@Qualifier("chatClientBuilder") ChatClient.Builder dashScopeChatClientBuilder,
+                                          Advisor loggerAdvisor // 日志记录器
     ) {
         return dashScopeChatClientBuilder
                 .defaultAdvisors(loggerAdvisor)
@@ -65,7 +66,7 @@ public class SpringAIConfig {
     }
 
     @Bean
-    public ChatClient openAiChatClient(ChatClient.Builder openAiChatClientBuilder,
+    public ChatClient openAiChatClient(@Qualifier("openAiChatClientBuilder") ChatClient.Builder openAiChatClientBuilder,
                                        Advisor loggerAdvisor  // 日志记录器
     ) {
         return openAiChatClientBuilder
