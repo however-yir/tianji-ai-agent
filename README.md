@@ -348,6 +348,32 @@ curl -N -X POST http://localhost:8099/chat/stream \
   -d '{"question":"解释一下RAG","sessionId":"s1"}'
 ```
 
+### 6.6 测试与 CI 对齐
+
+`tj-aigc` 的测试分为两类：
+
+- 默认单元测试：可在本地和 CI 稳定运行
+- 手工集成测试：依赖模型、Nacos、业务中间件，默认不在 CI 中执行
+
+1) 运行默认单元测试（推荐日常开发使用）
+
+```bash
+mvn -B -ntp -f 代码/tjxt/tj-aigc/pom.xml test
+```
+
+2) 运行手工集成测试（需要完整环境与密钥）
+
+```bash
+mvn -B -ntp -f 代码/tjxt/tj-aigc/pom.xml -Pmanual-integration-tests test
+```
+
+3) 本地模拟 CI 关键链路（与仓库工作流一致）
+
+```bash
+mvn -B -ntp -f 代码/tjxt/pom.xml -pl tj-aigc -am -DskipTests package
+mvn -B -ntp -f 代码/tjxt/tj-aigc/pom.xml test
+```
+
 ## 7. 原型与 UI 资产说明
 
 ### 7.1 原型与 UI 资源获取
