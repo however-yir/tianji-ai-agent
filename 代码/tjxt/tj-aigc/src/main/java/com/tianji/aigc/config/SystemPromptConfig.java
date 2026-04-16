@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicReference;
@@ -14,6 +15,7 @@ import java.util.concurrent.atomic.AtomicReference;
 @Slf4j
 @Getter
 @Configuration
+@Profile("!dev-demo")
 @RequiredArgsConstructor
 public class SystemPromptConfig {
 

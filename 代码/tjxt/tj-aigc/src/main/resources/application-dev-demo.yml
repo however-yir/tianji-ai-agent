@@ -1,0 +1,56 @@
+spring:
+  main:
+    lazy-initialization: true
+  datasource:
+    url: ${AIGC_DATASOURCE_URL:jdbc:mysql://127.0.0.1:3306/tj_aigc?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false}
+    username: ${AIGC_DATASOURCE_USERNAME:tianji}
+    password: ${AIGC_DATASOURCE_PASSWORD:tianji123}
+  data:
+    redis:
+      host: ${AIGC_REDIS_HOST:127.0.0.1}
+      port: ${AIGC_REDIS_PORT:6379}
+      password: ${AIGC_REDIS_PASSWORD:}
+      database: ${AIGC_REDIS_DATABASE:0}
+  cloud:
+    nacos:
+      config:
+        enabled: false
+      discovery:
+        enabled: false
+        register-enabled: false
+  ai:
+    chat:
+      my-client:
+        enabled: false
+    dashscope:
+      chat:
+        enabled: false
+      embedding:
+        enabled: false
+    openai:
+      chat:
+        enabled: false
+      embedding:
+        enabled: false
+
+tj:
+  auth:
+    resource:
+      enable: false
+  ai:
+    dev-demo:
+      user-id: ${AIGC_DEMO_USER_ID:10001}
+      token: ${AIGC_DEMO_TOKEN:dev-demo-token}
+      stream-delay-ms: ${AIGC_DEMO_STREAM_DELAY_MS:35}
+    session:
+      title: 新的对话
+      describe: 无需模型 Key 的本地演示模式，可直接体验会话、SSE、重试与历史记录。
+      examples:
+        - title: 梳理课程咨询流程
+          describe: 让助手把用户咨询、推荐、转化流程总结成可执行方案。
+        - title: 输出前端改版计划
+          describe: 生成一份从原型到上线的迭代路线图，适合汇报和执行。
+        - title: 根据附件生成总结
+          describe: 选择文档或图片，让助手把附件关键信息组织成简报。
+        - title: 给项目做一次工程化审查
+          describe: 从可运行性、测试、CI 和维护成本角度提出建议。

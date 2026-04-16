@@ -3,9 +3,11 @@ package com.tianji.aigc.agent;
 import com.tianji.aigc.config.SystemPromptConfig;
 import com.tianji.aigc.enums.AgentTypeEnum;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
+@Profile("!dev-demo")
 @RequiredArgsConstructor
 public class KnowledgeAgent extends AbstractAgent {
 

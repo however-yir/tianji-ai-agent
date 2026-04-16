@@ -1,10 +1,51 @@
 services:
+  frontend:
+    build:
+      context: ./web/chat-ui
+      dockerfile: Dockerfile
+    container_name: tianji-frontend
+    environment:
+      VITE_PROXY_TARGET: http://backend:8094
+    ports:
+      - "${AIGC_FRONTEND_PORT:-5173}:5173"
+
+  backend:
+    build:
+      context: ./代码/tjxt
+      dockerfile: tj-aigc/Dockerfile
+    container_name: tianji-aigc
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${AIGC_BACKEND_PROFILE:-dev-demo}
+      JAVA_OPTS: ${AIGC_BACKEND_JAVA_OPTS:-}
+      AIGC_DATASOURCE_URL: jdbc:mysql://mysql:3306/${AIGC_MYSQL_DATABASE:-tj_aigc}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false
+      AIGC_DATASOURCE_USERNAME: ${AIGC_MYSQL_USERNAME:-tianji}
+      AIGC_DATASOURCE_PASSWORD: ${AIGC_MYSQL_PASSWORD:-tianji123}
+      AIGC_REDIS_HOST: redis
+      AIGC_REDIS_PORT: 6379
+      AIGC_REDIS_PASSWORD: ${AIGC_REDIS_PASSWORD:-}
+      AIGC_REDIS_DATABASE: ${AIGC_REDIS_DATABASE:-0}
+      AIGC_DEMO_USER_ID: ${AIGC_DEMO_USER_ID:-10001}
+      AIGC_DEMO_TOKEN: ${AIGC_DEMO_TOKEN:-dev-demo-token}
+      AIGC_DEMO_STREAM_DELAY_MS: ${AIGC_DEMO_STREAM_DELAY_MS:-35}
+    ports:
+      - "${AIGC_BACKEND_PORT:-8094}:8094"
+
   redis:
     image: redis:7.2-alpine
     container_name: tianji-redis
     command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "6379:6379"
+      - "${AIGC_REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
     volumes:
       - tianji-redis-data:/data
 
@@ -16,12 +57,17 @@ services:
       - "--character-set-server=utf8mb4"
       - "--collation-server=utf8mb4_unicode_ci"
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: tianji
-      MYSQL_USER: tianji
-      MYSQL_PASSWORD: tianji123
+      MYSQL_ROOT_PASSWORD: ${AIGC_MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${AIGC_MYSQL_DATABASE:-tj_aigc}
+      MYSQL_USER: ${AIGC_MYSQL_USERNAME:-tianji}
+      MYSQL_PASSWORD: ${AIGC_MYSQL_PASSWORD:-tianji123}
     ports:
-      - "3306:3306"
+      - "${AIGC_MYSQL_PORT:-3306}:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
     volumes:
       - tianji-mysql-data:/var/lib/mysql
 
@@ -30,18 +76,19 @@ services:
     container_name: tianji-nacos
     profiles: ["nacos"]
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     environment:
       MODE: standalone
       SPRING_DATASOURCE_PLATFORM: mysql
       MYSQL_SERVICE_HOST: mysql
       MYSQL_SERVICE_PORT: "3306"
-      MYSQL_SERVICE_DB_NAME: tianji
-      MYSQL_SERVICE_USER: tianji
-      MYSQL_SERVICE_PASSWORD: tianji123
+      MYSQL_SERVICE_DB_NAME: ${AIGC_MYSQL_DATABASE:-tj_aigc}
+      MYSQL_SERVICE_USER: ${AIGC_MYSQL_USERNAME:-tianji}
+      MYSQL_SERVICE_PASSWORD: ${AIGC_MYSQL_PASSWORD:-tianji123}
       NACOS_AUTH_ENABLE: "false"
     ports:
-      - "8848:8848"
+      - "${AIGC_NACOS_PORT:-8848}:8848"
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
@@ -52,7 +99,7 @@ services:
       xpack.security.enabled: "false"
       ES_JAVA_OPTS: -Xms512m -Xmx512m
     ports:
-      - "9200:9200"
+      - "${AIGC_ES_PORT:-9200}:9200"
     volumes:
       - tianji-es-data:/usr/share/elasticsearch/data
 

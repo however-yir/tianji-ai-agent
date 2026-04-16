@@ -241,28 +241,66 @@ flowchart TD
 
 > 建议先跑 `openai-java-demo` -> 再跑 `my-spring-ai` -> 再看 `tjxt/tj-aigc`，能明显降低学习成本。
 
-### 6.1 环境要求
+### 6.1 一键启动（`dev-demo`，推荐）
 
-- JDK `17+`
-- Maven `3.9+`
-- Redis / MySQL / Elasticsearch（按模块启用，可用 `docker-compose.dev.yml` 快速启动）
-- 可用的大模型 API Key
+这套仓库现在支持一个默认可演示的本地模式：
 
-### 6.2 本地中间件启动（推荐）
+- 前端：`web/chat-ui`，默认保留 `demo` 优先体验
+- 后端：`代码/tjxt/tj-aigc`，通过 `dev-demo` profile 提供 mock 会话、历史记录与 SSE 输出
+- 中间件：MySQL / Redis 由 `docker-compose.dev.yml` 一次性拉起
+- 不需要真实模型 API Key，也不需要额外登录 Token
 
-在仓库根目录执行：
+第一次启动只需要两步：
 
 ```bash
-docker compose -f docker-compose.dev.yml up -d
+cp .env.example .env
+docker compose -f docker-compose.dev.yml up --build
 ```
+
+启动完成后可以直接访问：
+
+- 前端工作台：`http://127.0.0.1:5173`
+- AIGC 后端：`http://127.0.0.1:8094`
+- 热门会话接口：`http://127.0.0.1:8094/session/hot`
+
+默认演示信息：
+
+- Profile：`dev-demo`
+- 演示用户 ID：`10001`
+- 演示 Token：`dev-demo-token`
+- 后端鉴权：已关闭，本地演示无需登录
+
+如果你只想先看前端界面，即使后端尚未完全就绪，前端也会优先展示 `demo` 模式，不会一上来就因为 `401` 卡住。
 
 按需启用 Nacos 与 Elasticsearch：
 
 ```bash
-docker compose -f docker-compose.dev.yml --profile nacos --profile search up -d
+docker compose -f docker-compose.dev.yml --profile nacos --profile search up --build
 ```
 
-### 6.3 环境变量
+### 6.2 环境要求
+
+- JDK `17+`
+- Maven `3.9+`
+- Docker / Docker Compose（推荐，用于一键启动）
+- Redis / MySQL / Elasticsearch（按模块启用，可由 `docker-compose.dev.yml` 拉起）
+- 可用的大模型 API Key（仅在切换回真实模型时需要）
+
+### 6.3 本地中间件启动（进阶）
+
+如果你不想直接使用一键启动，也可以只拉中间件，然后手动运行后端：
+
+```bash
+docker compose -f docker-compose.dev.yml up -d mysql redis
+```
+
+按需加上 Nacos 与 Elasticsearch：
+
+```bash
+docker compose -f docker-compose.dev.yml up -d mysql redis nacos elasticsearch
+```
+
+### 6.4 环境变量
 
 先复制模板：
 
@@ -273,6 +311,14 @@ cp .env.example .env
 然后按需导出/覆盖（示例）：
 
 ```bash
+# 一键启动默认读取这些本地开发值
+export AIGC_BACKEND_PROFILE="dev-demo"
+export AIGC_MYSQL_DATABASE="tj_aigc"
+export AIGC_MYSQL_USERNAME="tianji"
+export AIGC_MYSQL_PASSWORD="tianji123"
+export AIGC_REDIS_HOST="127.0.0.1"
+export AIGC_REDIS_PORT="6379"
+
 # 大模型（阿里百炼 / OpenAI 兼容）
 export ALIYUN_API_KEY="your_key"
 
@@ -297,7 +343,7 @@ export AIGC_REDIS_HOST="127.0.0.1"
 export AIGC_REDIS_PORT="6379"
 ```
 
-### 6.4 模块级启动示例
+### 6.5 模块级启动示例
 
 1) OpenAI Java 示例
 
@@ -327,17 +373,21 @@ mvn -DskipTests spring-boot:run
 
 ```bash
 cd 代码/tjxt
-mvn -DskipTests -f tj-aigc/pom.xml spring-boot:run
+mvn -pl tj-aigc -am -DskipTests spring-boot:run -Dspring-boot.run.profiles=dev-demo
 ```
 
-说明：`tjxt` 依赖完整中间件与多模块协同，建议结合课程环境（Nacos/Redis/ES/MySQL/Gateway）运行。
+说明：
+
+- `dev-demo` profile 已关闭真实模型依赖与登录拦截，适合演示、联调和面试讲解
+- 如果你要切回真实模型，再把 `AIGC_BACKEND_PROFILE` 改为 `local`，并补充对应模型 Key 与业务环境
+- `tjxt` 仍然是完整微服务体系，后续接入真实课程、交易、搜索能力时，建议结合课程环境逐步补齐
 
 构建补充：
 
 - 若使用 JDK 23+，仓库已在 `代码/tjxt/pom.xml` 的 `maven-compiler-plugin` 中显式配置 `<proc>full</proc>`，用于确保 Lombok 注解处理正常。
 - 若需要在 `代码/tjxt/tj-aigc` 目录单独执行 `mvn -DskipTests compile`，请先在 `代码/tjxt` 根目录执行 `mvn -pl tj-aigc -am -DskipTests install`，预装兄弟模块产物（如 `tj-api`、`tj-auth-resource-sdk`）。
 
-### 6.5 接口验证示例
+### 6.6 接口验证示例
 
 以 `my-spring-ai` 为例：
 

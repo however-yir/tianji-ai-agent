@@ -11,6 +11,7 @@ import org.springframework.ai.chat.client.advisor.api.Advisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.retry.RetryCallback;
 import org.springframework.retry.RetryContext;
@@ -18,6 +19,7 @@ import org.springframework.retry.RetryListener;
 import org.springframework.retry.support.RetryTemplate;
 
 @Configuration
+@Profile("!dev-demo")
 public class SpringAIConfig {
 
     /**

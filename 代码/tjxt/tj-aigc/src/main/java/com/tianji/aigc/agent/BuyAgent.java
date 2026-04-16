@@ -8,11 +8,13 @@ import com.tianji.aigc.tools.OrderTools;
 import com.tianji.common.utils.UserContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
 @Component
+@Profile("!dev-demo")
 @RequiredArgsConstructor
 public class BuyAgent extends AbstractAgent {
 

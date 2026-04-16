@@ -9,6 +9,7 @@ import com.tianji.aigc.service.ChatService;
 import com.tianji.aigc.vo.ChatEventVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -18,6 +19,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
+@Profile("!dev-demo")
 public class AgentServiceImpl implements ChatService {
 
     private final ChatClient openAiChatClient;
