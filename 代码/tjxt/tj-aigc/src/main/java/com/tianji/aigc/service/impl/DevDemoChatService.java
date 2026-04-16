@@ -1,5 +1,8 @@
 package com.tianji.aigc.service.impl;
 
+import com.tianji.aigc.attachment.AttachmentContext;
+import com.tianji.aigc.attachment.AttachmentContextHolder;
+import com.tianji.aigc.attachment.AttachmentSource;
 import cn.hutool.core.util.StrUtil;
 import com.tianji.aigc.config.DevDemoProperties;
 import com.tianji.aigc.demo.DevDemoSessionStore;
@@ -36,10 +39,11 @@ public class DevDemoChatService implements ChatService {
     @Override
     public Flux<ChatEventVO> chat(String question, String sessionId) {
         String resolvedSessionId = devDemoSessionStore.ensureSession(sessionId);
+        AttachmentContext attachmentContext = AttachmentContextHolder.take(resolvedSessionId);
         devDemoSessionStore.addUserMessage(resolvedSessionId, question);
 
-        String answer = buildReply(question);
-        Map<String, Object> params = buildParams(question, resolvedSessionId);
+        String answer = buildReply(question, attachmentContext);
+        Map<String, Object> params = buildParams(question, resolvedSessionId, attachmentContext);
         List<String> chunks = split(answer, 28);
         AtomicBoolean stopSignal = stopSignals.computeIfAbsent(resolvedSessionId, key -> new AtomicBoolean(false));
         stopSignal.set(false);
@@ -100,13 +104,16 @@ public class DevDemoChatService implements ChatService {
 
     @Override
     public String chatText(String question) {
-        return buildReply(question);
+        return buildReply(question, null);
     }
 
-    private Map<String, Object> buildParams(String question, String sessionId) {
+    private Map<String, Object> buildParams(String question, String sessionId, AttachmentContext attachmentContext) {
         Map<String, Object> payload = new LinkedHashMap<>(devDemoSessionStore.defaultParamPayload(sessionId));
         payload.put("timestamp", LocalDateTime.now().toString());
-        if (question.contains("附件上下文")) {
+        if (attachmentContext != null && attachmentContext.hasSources()) {
+            payload.putAll(attachmentContext.toParamMap());
+            payload.put("capability", "attachment-qa");
+        } else if (question.contains("附件上下文")) {
             payload.put("sources", extractAttachmentNames(question));
             payload.put("capability", "attachment-demo");
         } else if (question.contains("流程") || question.toLowerCase().contains("mermaid")) {
@@ -119,8 +126,26 @@ public class DevDemoChatService implements ChatService {
         return payload;
     }
 
-    private String buildReply(String question) {
+    private String buildReply(String question, AttachmentContext attachmentContext) {
         String normalized = question == null ? "" : question.toLowerCase();
+        if (attachmentContext != null && attachmentContext.hasSources()) {
+            String sourceSummary = attachmentContext.getSources().stream()
+                    .limit(3)
+                    .map(this::formatSourceLine)
+                    .reduce((left, right) -> left + "\n" + right)
+                    .orElse("- 暂无可引用片段");
+            return """
+                    我已经基于你上传的真实附件内容整理出一版回答。
+
+                    当前问题：%s
+
+                    最相关的附件片段如下：
+                    %s
+
+                    你可以继续追问更细的问题，例如“请提炼风险”“输出待办”或“按汇报口径重写”。
+                    """.formatted(question, sourceSummary);
+        }
+
         if (normalized.contains("附件上下文") || normalized.contains("pdf") || normalized.contains("图片")) {
             List<String> attachments = extractAttachmentNames(question);
             String attachmentText = attachments.isEmpty() ? "未识别出附件名称" : String.join("、", attachments);
@@ -215,5 +240,13 @@ public class DevDemoChatService implements ChatService {
             names.add(endIndex > 2 ? trimmed.substring(2, endIndex) : trimmed.substring(2));
         }
         return names;
+    }
+
+    private String formatSourceLine(AttachmentSource source) {
+        return "- 《%s》片段 %s：%s".formatted(
+                source.getAttachmentName(),
+                source.getChunkIndex(),
+                source.getExcerpt()
+        );
     }
 }

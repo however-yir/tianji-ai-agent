@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -19,4 +21,9 @@ public class ChatDTO {
      * 会话id
      */
     private String sessionId;
+
+    /**
+     * 已上传附件id列表
+     */
+    private List<String> attachmentIds;
 }

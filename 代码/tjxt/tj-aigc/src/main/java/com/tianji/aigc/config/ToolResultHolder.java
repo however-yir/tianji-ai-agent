@@ -31,6 +31,15 @@ public class ToolResultHolder {
         EXPIRE_AT.put(key, System.currentTimeMillis() + EXPIRE_MILLIS);
     }
 
+    public static void putAll(String key, Map<String, Object> resultMap) {
+        if (key == null || resultMap == null || resultMap.isEmpty()) {
+            return;
+        }
+        cleanupExpiredEntries();
+        HANDLER_MAP.computeIfAbsent(key, k -> new ConcurrentHashMap<>()).putAll(resultMap);
+        EXPIRE_AT.put(key, System.currentTimeMillis() + EXPIRE_MILLIS);
+    }
+
     public static Map<String, Object> get(String key) {
         if (key == null) {
             return null;

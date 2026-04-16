@@ -14,6 +14,11 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class RouteAgent extends AbstractAgent {
 
+    @Override
+    protected boolean useAttachmentContext() {
+        return false;
+    }
+
     private final SystemPromptConfig systemPromptConfig;
 
     @Override

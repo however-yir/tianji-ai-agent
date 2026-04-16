@@ -1,5 +1,7 @@
 package com.tianji.aigc.service.impl;
 
+import com.tianji.aigc.attachment.AttachmentContext;
+import com.tianji.aigc.attachment.AttachmentContextHolder;
 import com.tianji.aigc.agent.AbstractAgent;
 import com.tianji.aigc.agent.Agent;
 import com.tianji.aigc.config.SystemPromptConfig;
@@ -50,6 +52,14 @@ public class AgentServiceImpl implements ChatService {
                     .eventType(ChatEventTypeEnum.DATA.getValue())
                     .eventData(result)
                     .build();
+            AttachmentContext context = AttachmentContextHolder.take(sessionId);
+            if (context != null && context.hasSources()) {
+                ChatEventVO paramEvent = ChatEventVO.builder()
+                        .eventType(ChatEventTypeEnum.PARAM.getValue())
+                        .eventData(context.toParamMap())
+                        .build();
+                return Flux.just(chatEventVO, paramEvent, AbstractAgent.STOP_EVENT);
+            }
             return Flux.just(chatEventVO, AbstractAgent.STOP_EVENT);
         }
 

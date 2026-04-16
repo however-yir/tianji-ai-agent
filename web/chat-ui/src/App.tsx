@@ -83,6 +83,10 @@ type AttachmentItem = {
   name: string;
   size: number;
   type: string;
+  file?: File;
+  uploadId?: string;
+  previewText?: string;
+  chunkCount?: number;
 };
 
 type ReferenceCard = {
@@ -108,6 +112,7 @@ type ChatMessage = {
   toolSummary?: ToolSummaryItem[];
   originQuestion?: string;
   attachments?: AttachmentItem[];
+  attachmentIds?: string[];
   errorText?: string;
 };
 
@@ -163,6 +168,15 @@ type MessageApiItem = {
   type?: string;
   content?: string;
   params?: Record<string, unknown>;
+};
+
+type AttachmentUploadResponseItem = {
+  attachmentId?: string;
+  name?: string;
+  contentType?: string;
+  size?: number;
+  previewText?: string;
+  chunkCount?: number;
 };
 
 type SpeechRecognitionResultLike = {
@@ -259,6 +273,18 @@ function formatBytes(size: number): string {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function snapshotAttachments(items: AttachmentItem[]): AttachmentItem[] {
+  return items.map(({ id, name, size, type, uploadId, previewText, chunkCount }) => ({
+    id,
+    name,
+    size,
+    type,
+    uploadId,
+    previewText,
+    chunkCount,
+  }));
+}
+
 function stripMarkdown(input: string): string {
   return input
     .replace(/```[\s\S]*?```/g, " ")
@@ -352,11 +378,45 @@ function toToolSummary(params?: Record<string, unknown> | null): ToolSummaryItem
     return [];
   }
   return Object.entries(params)
+    .filter(([key]) => !["sources", "attachmentIds"].includes(key))
     .slice(0, 4)
     .map(([key, value]) => ({
       label: key,
       value: typeof value === "string" ? value : normalizeText(value),
     }));
+}
+
+function toReferences(params?: Record<string, unknown> | null): ReferenceCard[] {
+  const rawSources = params?.sources;
+  if (!Array.isArray(rawSources)) {
+    return [];
+  }
+  return rawSources
+    .map((item): ReferenceCard | null => {
+      if (!item || typeof item !== "object") {
+        return null;
+      }
+      const source = item as Record<string, unknown>;
+      const title = normalizeText(source.attachmentName || source.title);
+      if (!title) {
+        return null;
+      }
+      const chunkIndex = source.chunkIndex ? `片段 ${normalizeText(source.chunkIndex)}` : "";
+      return {
+        title,
+        excerpt: normalizeText(source.excerpt),
+        tag: chunkIndex || "attachment",
+      } satisfies ReferenceCard;
+    })
+    .filter((item): item is ReferenceCard => item !== null);
+}
+
+function extractAttachmentIds(params?: Record<string, unknown> | null): string[] {
+  const raw = params?.attachmentIds;
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  return raw.map((item) => normalizeText(item)).filter(Boolean);
 }
 
 function findShortcut(commandText: string) {
@@ -638,7 +698,7 @@ async function requestJson<T>(
   const controller = new AbortController();
   const headers = new Headers(init.headers);
   let timeoutTriggered = false;
-  if (init.body && !headers.has("Content-Type")) {
+  if (init.body && !(init.body instanceof FormData) && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
   if (token.trim()) {
@@ -676,8 +736,7 @@ async function requestJson<T>(
 }
 
 async function streamChatEvents(
-  question: string,
-  sessionId: string,
+  payload: { question: string; sessionId: string; attachmentIds?: string[] },
   token: string,
   signal: AbortSignal,
   onEvent: (event: ChatEventPayload) => void,
@@ -691,7 +750,7 @@ async function streamChatEvents(
   const response = await fetch(`${API_BASE_URL}/chat`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ question, sessionId }),
+    body: JSON.stringify(payload),
     signal,
   });
   if (!response.ok) {
@@ -741,6 +800,43 @@ async function streamChatEvents(
   if (tail) {
     flushBlock(tail);
   }
+}
+
+async function uploadAttachments(
+  attachments: AttachmentItem[],
+  token: string,
+): Promise<{ uploadedIds: string[]; uploadedItems: AttachmentItem[] }> {
+  const formData = new FormData();
+  attachments.forEach((attachment) => {
+    if (attachment.file) {
+      formData.append("files", attachment.file, attachment.name);
+    }
+  });
+
+  const response = await requestJson<AttachmentUploadResponseItem[]>(
+    "/attachment/upload",
+    {
+      method: "POST",
+      body: formData,
+    },
+    token,
+    30000,
+  );
+
+  const uploadedItems = (response || []).map((item, index) => ({
+    id: attachments[index]?.id || createId("file"),
+    name: item.name || attachments[index]?.name || "未命名附件",
+    size: item.size || attachments[index]?.size || 0,
+    type: item.contentType || attachments[index]?.type || "application/octet-stream",
+    uploadId: item.attachmentId || "",
+    previewText: item.previewText || "",
+    chunkCount: item.chunkCount || 0,
+  }));
+
+  return {
+    uploadedIds: uploadedItems.map((item) => item.uploadId || "").filter(Boolean),
+    uploadedItems,
+  };
 }
 
 export default function App() {
@@ -934,15 +1030,13 @@ export default function App() {
         })),
       );
       setBanner(null);
-      if (!activeSessionId && nextSessions[0]) {
-        setActiveSessionId(nextSessions[0].id);
-      }
+      setActiveSessionId((current) => current || nextSessions[0]?.id || "");
     } catch (error) {
       setBanner(createBanner("warning", errorToMessage(error)));
     } finally {
       setIsConnectingApi(false);
     }
-  }, [activeSessionId, token]);
+  }, [token]);
 
   const loadSessionMessages = useCallback(
     async (sessionId: string) => {
@@ -965,6 +1059,8 @@ export default function App() {
           status: "done",
           params: item.params || null,
           toolSummary: toToolSummary(item.params),
+          references: toReferences(item.params),
+          attachmentIds: extractAttachmentIds(item.params),
         }));
         setMessageCache((current) => ({
           ...current,
@@ -981,25 +1077,30 @@ export default function App() {
   );
 
   useEffect(() => {
-    if (runMode === "demo") {
-      setApiConnectRequested(false);
-      setBanner(null);
-      if (!activeSessionId) {
-        const firstSession = demoSessions[0];
-        if (firstSession) {
-          setActiveSessionId(firstSession.id);
-        }
-      }
+    if (runMode !== "demo") {
       return;
     }
+    setApiConnectRequested(false);
+    setBanner(null);
+    if (!activeSessionId) {
+      const firstSession = demoSessions[0];
+      if (firstSession) {
+        setActiveSessionId(firstSession.id);
+      }
+    }
+  }, [activeSessionId, demoSessions, runMode]);
 
+  useEffect(() => {
+    if (runMode === "demo") {
+      return;
+    }
     if (!apiConnectRequested && !token.trim()) {
       setBanner(createBanner("info", "当前是“真实 API”模式。填写 Bearer Token 后点击连接，或先切回演示模式。"));
       return;
     }
 
     void refreshApiSessions();
-  }, [activeSessionId, apiConnectRequested, demoSessions, refreshApiSessions, runMode, token]);
+  }, [apiConnectRequested, refreshApiSessions, runMode, token]);
 
   useEffect(() => {
     if (!activeSessionId) {
@@ -1332,14 +1433,19 @@ export default function App() {
   );
 
   const runApiStreaming = useCallback(
-    async (sessionId: string, messageId: string, question: string) => {
+    async (
+      sessionId: string,
+      messageId: string,
+      question: string,
+      attachmentIds: string[] = [],
+    ) => {
       const controller = new AbortController();
       abortRef.current = controller;
       currentStreamRef.current = { sessionId, messageId };
       setIsStreaming(true);
 
       try {
-        await streamChatEvents(question, sessionId, token, controller.signal, (event) => {
+        await streamChatEvents({ question, sessionId, attachmentIds }, token, controller.signal, (event) => {
           if (event.eventType === 1001) {
             setAssistantState(sessionId, messageId, (message) => ({
               content: message.content + normalizeText(event.eventData),
@@ -1355,6 +1461,8 @@ export default function App() {
             setAssistantState(sessionId, messageId, {
               params,
               toolSummary: toToolSummary(params),
+              references: toReferences(params),
+              attachmentIds: extractAttachmentIds(params),
             });
             return;
           }
@@ -1397,8 +1505,17 @@ export default function App() {
   );
 
   const sendQuestion = useCallback(
-    async (questionText: string, options?: { retryMessageId?: string; keepUserMessage?: boolean }) => {
-      const fallbackPrompt = attachments.length ? "请基于这些附件内容给我一个总结和建议。" : "";
+    async (
+      questionText: string,
+      options?: {
+        retryMessageId?: string;
+        keepUserMessage?: boolean;
+        attachmentIds?: string[];
+        attachments?: AttachmentItem[];
+      },
+    ) => {
+      const pendingAttachments = options?.attachments || attachments;
+      const fallbackPrompt = pendingAttachments.length ? "请基于这些附件内容给我一个总结和建议。" : "";
       const resolvedPrompt = resolvePrompt(questionText || fallbackPrompt);
       if (!resolvedPrompt) {
         return;
@@ -1409,11 +1526,22 @@ export default function App() {
         return;
       }
 
-      const pendingAttachments = attachments;
+      let attachmentIds = options?.attachmentIds || [];
+      let messageAttachments = options?.attachments || snapshotAttachments(pendingAttachments);
+      const attachmentsNeedingUpload = pendingAttachments.filter((item) => item.file);
+
+      if (runMode === "api" && attachmentsNeedingUpload.length) {
+        const uploadResult = await uploadAttachments(attachmentsNeedingUpload, token);
+        attachmentIds = uploadResult.uploadedIds;
+        messageAttachments = uploadResult.uploadedItems;
+        setBanner(createBanner("info", "附件已上传，正在基于解析内容检索相关片段。"));
+      }
+
       const questionWithAttachments = buildAttachmentContext(resolvedPrompt, pendingAttachments);
       const assistantMessageId = options?.retryMessageId || createId("assistant");
       const userMessage = createDemoMessage("user", resolvedPrompt, {
-        attachments: pendingAttachments,
+        attachments: messageAttachments,
+        attachmentIds,
       });
 
       if (options?.retryMessageId) {
@@ -1425,6 +1553,8 @@ export default function App() {
           references: [],
           errorText: "",
           originQuestion: resolvedPrompt,
+          attachmentIds,
+          attachments: messageAttachments,
         });
       } else {
         const assistantMessage: ChatMessage = {
@@ -1434,6 +1564,8 @@ export default function App() {
           createdAt: new Date().toISOString(),
           status: "streaming",
           originQuestion: resolvedPrompt,
+          attachments: messageAttachments,
+          attachmentIds,
         };
         appendMessages(
           currentSessionId,
@@ -1451,20 +1583,20 @@ export default function App() {
         return;
       }
 
-      await runApiStreaming(currentSessionId, assistantMessageId, questionWithAttachments);
+      await runApiStreaming(currentSessionId, assistantMessageId, resolvedPrompt, attachmentIds);
     },
-    [appendMessages, attachments, ensureSessionReady, runApiStreaming, runMode, runDemoStreaming, setAssistantState],
+    [appendMessages, attachments, ensureSessionReady, runApiStreaming, runMode, runDemoStreaming, setAssistantState, token],
   );
 
   const handleSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
-      if (!draft.trim() || isStreaming) {
+      if ((!draft.trim() && !attachments.length) || isStreaming) {
         return;
       }
       await sendQuestion(draft);
     },
-    [draft, isStreaming, sendQuestion],
+    [attachments.length, draft, isStreaming, sendQuestion],
   );
 
   const handleRetry = useCallback(
@@ -1473,7 +1605,12 @@ export default function App() {
       if (!prompt || isStreaming) {
         return;
       }
-      await sendQuestion(prompt, { retryMessageId: message.id, keepUserMessage: true });
+      await sendQuestion(prompt, {
+        retryMessageId: message.id,
+        keepUserMessage: true,
+        attachmentIds: message.attachmentIds,
+        attachments: message.attachments,
+      });
     },
     [isStreaming, sendQuestion],
   );
@@ -1517,6 +1654,7 @@ export default function App() {
       name: file.name,
       size: file.size,
       type: file.type || "application/octet-stream",
+      file,
     }));
     setAttachments((current) => [...current, ...nextFiles]);
     event.target.value = "";
@@ -1981,7 +2119,7 @@ export default function App() {
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && !event.shiftKey) {
                     event.preventDefault();
-                    if (!draft.trim() || isStreaming) {
+                    if ((!draft.trim() && !attachments.length) || isStreaming) {
                       return;
                     }
                     void sendQuestion(draft);
@@ -2005,7 +2143,7 @@ export default function App() {
           {speechError ? <p className="composer-footnote error">{speechError}</p> : null}
           {attachments.length ? (
             <p className="composer-footnote">
-              当前附件会以文件名、类型、大小的方式注入提问上下文。要实现真正的文档问答，后续还需要后端上传解析接口。
+              演示模式会把附件元信息注入本地上下文；真实 API 模式会先上传文件，再基于解析片段检索并回传引用。
             </p>
           ) : null}
         </form>

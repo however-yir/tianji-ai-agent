@@ -3,6 +3,8 @@ package com.tianji.aigc.agent;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
+import com.tianji.aigc.attachment.AttachmentContext;
+import com.tianji.aigc.attachment.AttachmentContextHolder;
 import com.tianji.aigc.config.ToolResultHolder;
 import com.tianji.aigc.constants.Constant;
 import com.tianji.aigc.enums.ChatEventTypeEnum;
@@ -49,12 +51,19 @@ public abstract class AbstractAgent implements Agent {
         // 获取用户id
         var userId = UserContext.getUser();
         var requestId = this.generateRequestId();
+        this.registerAttachmentParams(sessionId, requestId);
 
         //更新会话时间
         this.chatSessionService.update(sessionId, question, userId);
-        return this.getChatClientRequest(sessionId, requestId, question)
-                .call()
-                .content();
+        try {
+            return this.getChatClientRequest(sessionId, requestId, question)
+                    .call()
+                    .content();
+        } finally {
+            if (this.useAttachmentContext()) {
+                AttachmentContextHolder.clear(sessionId);
+            }
+        }
     }
 
     public Flux<ChatEventVO> processStream(String question, String sessionId) {
@@ -63,6 +72,7 @@ public abstract class AbstractAgent implements Agent {
         var requestId = this.generateRequestId();
         // 大模型输出内容的缓存器，用于在输出中断后的数据存储
         StringBuilder outputBuilder = new StringBuilder();
+        this.registerAttachmentParams(sessionId, requestId);
 
         //更新会话时间
         this.chatSessionService.update(sessionId, question, userId);
@@ -78,10 +88,18 @@ public abstract class AbstractAgent implements Agent {
                     //输出结束，清除标记
                     GENERATE_STATUS.remove(sessionId);
                 })
-                .doOnError(throwable -> GENERATE_STATUS.remove(sessionId)) // 错误时清除标记
+                .doOnError(throwable -> {
+                    GENERATE_STATUS.remove(sessionId);
+                    if (this.useAttachmentContext()) {
+                        AttachmentContextHolder.clear(sessionId);
+                    }
+                }) // 错误时清除标记
                 .doOnCancel(() -> {
                     // 当输出被取消时，保存输出的内容到历史记录中
                     this.saveStopHistoryRecord(sessionId, outputBuilder.toString());
+                    if (this.useAttachmentContext()) {
+                        AttachmentContextHolder.clear(sessionId);
+                    }
                 })
                 .takeWhile(s -> Optional.ofNullable(GENERATE_STATUS.get(sessionId)).orElse(false)) // 只输出标记为true的流
                 .map(chatResponse -> {
@@ -105,17 +123,23 @@ public abstract class AbstractAgent implements Agent {
                 })
                 .concatWith(Flux.defer(() -> {
                     // 通过请求id获取到参数列表，如果不为空，就将其追加到返回结果中
-                    var map = ToolResultHolder.get(requestId);
-                    if (CollUtil.isNotEmpty(map)) {
-                        ToolResultHolder.remove(requestId); // 清除参数列表
-                        // 响应给前端的参数数据
-                        ChatEventVO chatEventVO = ChatEventVO.builder()
-                                .eventData(map)
-                                .eventType(ChatEventTypeEnum.PARAM.getValue())
-                                .build();
-                        return Flux.just(chatEventVO, STOP_EVENT);
+                    try {
+                        var map = ToolResultHolder.get(requestId);
+                        if (CollUtil.isNotEmpty(map)) {
+                            ToolResultHolder.remove(requestId); // 清除参数列表
+                            // 响应给前端的参数数据
+                            ChatEventVO chatEventVO = ChatEventVO.builder()
+                                    .eventData(map)
+                                    .eventType(ChatEventTypeEnum.PARAM.getValue())
+                                    .build();
+                            return Flux.just(chatEventVO, STOP_EVENT);
+                        }
+                        return Flux.just(STOP_EVENT);
+                    } finally {
+                        if (this.useAttachmentContext()) {
+                            AttachmentContextHolder.clear(sessionId);
+                        }
                     }
-                    return Flux.just(STOP_EVENT);
                 }));
     }
 
@@ -142,11 +166,37 @@ public abstract class AbstractAgent implements Agent {
         advisors.addAll(this.advisors(question));
 
         return this.dashScopeChatClient.prompt()
-                .system(promptSystem -> promptSystem.text(this.systemMessage()).params(this.systemMessageParams()))
+                .system(promptSystem -> promptSystem.text(this.resolveSystemMessage(sessionId)).params(this.systemMessageParams()))
                 .advisors(advisor -> advisor.advisors(advisors).params(this.advisorParams(sessionId, requestId)))
                 .tools(this.tools())
                 .toolContext(this.toolContext(sessionId, requestId))
                 .user(question);
+    }
+
+    protected boolean useAttachmentContext() {
+        return true;
+    }
+
+    private void registerAttachmentParams(String sessionId, String requestId) {
+        if (!this.useAttachmentContext()) {
+            return;
+        }
+        AttachmentContext context = AttachmentContextHolder.peek(sessionId);
+        if (context != null && context.hasSources()) {
+            ToolResultHolder.putAll(requestId, context.toParamMap());
+        }
+    }
+
+    private String resolveSystemMessage(String sessionId) {
+        String systemMessage = this.systemMessage();
+        if (!this.useAttachmentContext()) {
+            return systemMessage;
+        }
+        AttachmentContext context = AttachmentContextHolder.peek(sessionId);
+        if (context == null || !context.hasSources()) {
+            return systemMessage;
+        }
+        return systemMessage + "\n\n" + context.toSystemPrompt();
     }
 
     @Override
