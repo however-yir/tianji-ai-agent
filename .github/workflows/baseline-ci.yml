@@ -171,6 +171,7 @@ jobs:
           fi
 
           if [ -f "代码/tjxt/tj-aigc/pom.xml" ]; then
+            mvn -B -ntp -f 代码/tjxt/pom.xml -pl tj-aigc -am -DskipTests install
             mvn -B -ntp -f 代码/tjxt/tj-aigc/pom.xml test
             ran=1
           fi

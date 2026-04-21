@@ -47,8 +47,8 @@ jobs:
           java-version: '17'
           cache: maven
 
-      - name: Compile tjxt + tj-aigc dependency chain
-        run: mvn -B -ntp -f 代码/tjxt/pom.xml -pl tj-aigc -am -DskipTests package
+      - name: Install tjxt + tj-aigc dependency chain
+        run: mvn -B -ntp -f 代码/tjxt/pom.xml -pl tj-aigc -am -DskipTests install
 
       - name: Run tj-aigc unit tests
         run: mvn -B -ntp -f 代码/tjxt/tj-aigc/pom.xml test
