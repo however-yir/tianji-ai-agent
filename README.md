@@ -250,7 +250,31 @@ flowchart TD
 - 中间件：MySQL / Redis 由 `docker-compose.dev.yml` 一次性拉起
 - 不需要真实模型 API Key，也不需要额外登录 Token
 
-第一次启动只需要两步：
+第一次启动推荐直接用脚本：
+
+```bash
+# macOS
+bash scripts/quick-start-mac.sh
+```
+
+```powershell
+# Windows PowerShell
+powershell -ExecutionPolicy Bypass -File .\scripts\quick-start-win.ps1
+```
+
+```bat
+:: Windows CMD
+scripts\quick-start-win.bat
+```
+
+可选参数（按需）：
+
+- `--with-nacos` / `-WithNacos`：启用 Nacos profile
+- `--with-search` / `-WithSearch`：启用 Elasticsearch profile
+- `--detach` / `-Detach`：后台运行
+- `--reset-env` / `-ResetEnv`：用 `.env.example` 覆盖现有 `.env`
+
+手动方式（等价）也可用，两步即可：
 
 ```bash
 cp .env.example .env
