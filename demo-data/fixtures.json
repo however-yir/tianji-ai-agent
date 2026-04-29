@@ -1,0 +1,37 @@
+{
+  "courses": [
+    {
+      "id": 1589905661084430337,
+      "name": "Java 后端工程师体系课",
+      "price": 199.0,
+      "validDuration": 12,
+      "usePeople": "零基础或转行学习者",
+      "detail": "从 Java 基础到 Spring Boot 微服务，覆盖企业级后端开发全链路。包含 Java SE、MySQL、Spring、Spring Boot、MyBatis-Plus、Redis、微服务架构等核心模块，适合 3-6 个月系统学习后求职后端开发岗位。"
+    },
+    {
+      "id": 1589905661084430338,
+      "name": "Spring Cloud 微服务实战",
+      "price": 299.0,
+      "validDuration": 12,
+      "usePeople": "有 Spring Boot 基础的开发者",
+      "detail": "基于 Spring Cloud Alibaba 的微服务架构实战课程。涵盖 Nacos 注册中心与配置中心、OpenFeign 远程调用、Sentinel 流量控制、Seata 分布式事务、Gateway 网关和 SkyWalking 链路追踪。"
+    },
+    {
+      "id": 1589905661084430339,
+      "name": "Redis 深度实战与缓存架构",
+      "price": 149.0,
+      "validDuration": 12,
+      "usePeople": "有 Java 基础的开发者",
+      "detail": "从 Redis 基础数据结构到底层原理，覆盖缓存穿透、击穿、雪崩的解决方案，分布式锁实现，Redis Cluster 集群部署，以及 Redis 在秒杀、排行榜、消息队列等场景中的应用。"
+    }
+  ],
+  "orders": [
+    {
+      "orderId": 202604290001,
+      "courseIds": [1589905661084430337],
+      "totalAmount": 199.0,
+      "discountAmount": 20.0,
+      "payAmount": 179.0
+    }
+  ]
+}
