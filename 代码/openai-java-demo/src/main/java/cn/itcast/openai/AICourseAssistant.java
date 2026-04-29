@@ -36,28 +36,24 @@ public class AICourseAssistant {
                 .baseUrl("https://dashscope.aliyuncs.com/compatible-mode/v1")
                 .apiKey(apiKey)
                 .build();
-        // 初始化系统消息
-        // ChatCompletionCreateParams createParams = ChatCompletionCreateParams.builder()
-        //         .model("qwq-plus-latest")
-        //         .addSystemMessage(SYSTEM_PROMPT)
-        //         .build();
+        // 系统提示词在每次请求中加入，chatHistory 只保存用户和助手的多轮消息。
     }
 
     public String chat(String userInput) {
         try {
-            // TODO 添加用户消息
+            // 添加用户消息，保留多轮对话上下文。
             chatHistory.add(ChatCompletionMessageParam.ofUser(ChatCompletionUserMessageParam.builder()
                     .content(userInput)
                     .build()));
 
-            // TODO 构建请求
+            // 构建请求。系统提示词负责稳定课程顾问角色，chatHistory 负责保存上下文。
             ChatCompletionCreateParams createParams = ChatCompletionCreateParams.builder()
                     .model("qwq-plus-latest")
+                    .addSystemMessage(SYSTEM_PROMPT)
                     .messages(chatHistory)
                     .build();
 
-            // TODO 获取响应
-            //String assistantResponse = "";
+            // 获取模型响应。
             var response = client.chat().completions()
                     .create(createParams)
                     .choices()
@@ -73,23 +69,22 @@ public class AICourseAssistant {
                             .build()
             ));
 
-            // TODO 业务逻辑处理
-            return processBusinessLogic(response);
+            // 教学样例中的业务处理：用本地方法模拟下单结果，正式项目应迁移到 Tool Calling。
+            return processBusinessLogic(userInput, response);
         } catch (Exception e) {
             return "系统繁忙，请稍后再试";
         }
     }
 
-    private String processBusinessLogic(String response) {
-        if (response.contains("立即下单")) {
+    private String processBusinessLogic(String userInput, String response) {
+        if (userInput.contains("立即下单") || userInput.contains("下单") || response.contains("支付链接")) {
             return generateOrder(response);
         }
         return response;
     }
 
     private String generateOrder(String response) {
-        // TODO 模拟订单生成逻辑
-        // 模拟从上下文中提取课程信息
+        // 教学留白：这里故意保留本地模拟订单，真实业务请参考 tj-aigc 的 OrderTools.prePlaceOrder。
         String courseName = "JAVA开发零基础入门";
         String price = "0.01";
         String orderUrl = "https://pay.tianji.com/order/20240501";
@@ -99,14 +94,9 @@ public class AICourseAssistant {
                 课程名称：%s
                 价格：￥%s
                 支付链接：<a href="%s">%s</a>
+                说明：这是 openai-java-demo 的教学模拟订单，真实预下单链路见 tj-aigc/OrderTools。
                 """, courseName, price, orderUrl, orderUrl);
     }
-    // return """
-    //         [模拟订单]
-    //         课程名称：JAVA开发零基础入门
-    //         价格：￥0.01
-    //         支付链接：https://pay.tianji.com/order/20240501
-    //         """;
 
     public static void main(String[] args) {
         // 从环境变量获取API Key（遵循课程中的安全规范）

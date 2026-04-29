@@ -56,20 +56,24 @@ const SHORTCUTS = [
 
 const DEMO_EXAMPLES = [
   {
-    title: "梳理课程咨询流程",
-    describe: "让助手把用户咨询、推荐、转化流程总结成可执行方案。",
+    title: "课程推荐",
+    describe: "我零基础，想 3 个月入门 Java 后端，帮我推荐课程",
   },
   {
-    title: "输出前端改版计划",
-    describe: "生成一份从原型到上线的迭代路线图，适合汇报和执行。",
+    title: "课程详情查询",
+    describe: "介绍一下 1589905661084430337 这门课适合谁，价格多少",
   },
   {
-    title: "分析一段对话记录",
-    describe: "自动提炼结论、风险和待办事项，适合售前与项目复盘。",
+    title: "预下单",
+    describe: "我要购买课程 1589905661084430337，帮我生成确认订单",
   },
   {
-    title: "根据附件生成总结",
-    describe: "选择文档或图片，让助手把附件关键信息组织成简报。",
+    title: "知识库问答",
+    describe: "Java 中 Redis 缓存穿透是什么，怎么处理",
+  },
+  {
+    title: "语音/多模态入口",
+    describe: "上传一张课程截图，或用语音问“这门课适合我吗”",
   },
 ];
 
@@ -565,6 +569,115 @@ function createSeedDemoStore(): DemoStore {
 function buildDemoReply(question: string, attachments: AttachmentItem[]): Partial<ChatMessage> {
   const normalized = question.toLowerCase();
   const attachmentNames = attachments.map((item) => item.name).join("、");
+
+  if (normalized.includes("推荐课程") || normalized.includes("入门 java") || normalized.includes("java 后端")) {
+    return {
+      content: [
+        "我会先按“目标、基础、周期、转化动作”来推荐课程。",
+        "",
+        "你是零基础并希望 3 个月入门 Java 后端，优先建议从 Java 基础、Spring Boot 实战、项目就业课三段走。",
+        "",
+        "推荐顺序：",
+        "",
+        "1. Java 开发零基础入门：补语法、面向对象和集合基础",
+        "2. Spring Boot 企业项目课：把接口、数据库、Redis 串起来",
+        "3. Java 后端就业项目课：用完整项目沉淀简历可讲的业务经验",
+      ].join("\n"),
+      params: {
+        mode: "demo",
+        route: "RECOMMEND",
+        courseInfo_1589905661084430337: {
+          id: "1589905661084430337",
+          name: "Java 后端工程师体系课",
+          price: 199,
+          validDuration: 12,
+          usePeople: "零基础或转行学习者",
+          detail: "覆盖 Java 基础、Spring Boot、Redis、项目实战和面试表达。",
+        },
+      },
+      references: [
+        {
+          title: "RouteAgent 命中推荐场景",
+          excerpt: "推荐类问题会进入 RecommendAgent，再由 CourseTools 返回课程卡片参数。",
+          tag: "RECOMMEND",
+        },
+      ],
+    };
+  }
+
+  if (normalized.includes("适合谁") || normalized.includes("价格多少") || normalized.includes("课程详情")) {
+    return {
+      content: [
+        "这门课更适合希望系统学习 Java 后端、并需要项目经验沉淀的同学。",
+        "",
+        "课程会覆盖基础语法、Spring Boot、Redis、接口设计和业务项目实践。当前演示价格为 199 元，有效期 12 个月。",
+      ].join("\n"),
+      params: {
+        mode: "demo",
+        route: "CONSULT",
+        courseInfo_1589905661084430337: {
+          id: "1589905661084430337",
+          name: "Java 后端工程师体系课",
+          price: 199,
+          validDuration: 12,
+          usePeople: "零基础、转行学习者、需要补项目经验的后端初学者",
+          detail: "以课程详情查询为核心，适合展示 ConsultAgent + CourseTools 链路。",
+        },
+      },
+    };
+  }
+
+  if (normalized.includes("购买课程") || normalized.includes("生成确认订单") || normalized.includes("预下单")) {
+    return {
+      content: [
+        "我已经为你生成一张预下单确认卡片。",
+        "",
+        "在真实链路中，BuyAgent 不会直接完成支付，而是调用 OrderTools 生成订单确认信息，再由前端展示给用户做最终确认。",
+      ].join("\n"),
+      params: {
+        mode: "demo",
+        route: "BUY",
+        prePlaceOrder: {
+          count: 1,
+          totalAmount: 199,
+          discountAmount: 20,
+          couponName: "单券：【新人立减 20 元】",
+          payAmount: 179,
+          courseIds: ["1589905661084430337"],
+          orderId: 202604290001,
+          couponId: 9001,
+        },
+      },
+      references: [
+        {
+          title: "Tool Calling",
+          excerpt: "OrderTools.prePlaceOrder 返回结构化订单参数，前端按 PARAM 事件渲染卡片。",
+          tag: "BUY",
+        },
+      ],
+    };
+  }
+
+  if (normalized.includes("缓存穿透") || normalized.includes("redis")) {
+    return {
+      content: [
+        "Redis 缓存穿透指的是：请求查询一个数据库中也不存在的数据，导致每次都绕过缓存打到数据库。",
+        "",
+        "常见处理方式：",
+        "",
+        "1. 缓存空值，并设置较短 TTL",
+        "2. 使用布隆过滤器提前拦截不存在的 key",
+        "3. 对异常流量做限流和参数校验",
+        "",
+        "在课程业务里，课程 ID 查询就适合先做参数校验，再结合空值缓存保护课程服务。",
+      ].join("\n"),
+      params: {
+        mode: "demo",
+        route: "KNOWLEDGE",
+        topic: "Redis 缓存穿透",
+      },
+    };
+  }
 
   if (normalized.includes("mermaid") || normalized.includes("流程")) {
     return {

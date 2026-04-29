@@ -9,6 +9,7 @@ This document clarifies which content is required in the main repository and whi
 - `LICENSE`
 - `.github/workflows/`
 - `docs/resource-index.md`
+- `docs/assets/screenshots/` lightweight README screenshots
 
 ## Externalized assets (not tracked in main repo)
 - `天机AI助手/` (UI design drafts)

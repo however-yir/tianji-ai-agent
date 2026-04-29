@@ -1,601 +1,263 @@
 # tianji-ai-agent
 
-🔥 A Spring AI agent engineering project based on Java, Spring Boot, MCP, and RAG workflows.  
-🚀 Built for prompt engineering, tool calling, conversation memory, workflow routing, and multimodal AI assistants.  
-⭐ Includes backend code, web prototypes, and UI assets for practical agent system development.
+课程业务 Agent 工程案例：用户提问 -> RouteAgent 意图识别 -> Recommend/Buy/Consult/Knowledge 子 Agent -> Tool Calling -> SSE 流式返回 -> 前端卡片展示。
 
 [![CI](https://github.com/however-yir/tianji-ai-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/however-yir/tianji-ai-agent/actions/workflows/ci.yml)
 [![Java](https://img.shields.io/badge/Java-17-007396?logo=openjdk)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.5-6DB33F?logo=springboot)](https://spring.io/projects/spring-boot)
 [![Spring AI](https://img.shields.io/badge/Spring%20AI-1.0.0--M6-6DB33F)](https://spring.io/projects/spring-ai)
 [![Maven](https://img.shields.io/badge/Build-Maven-C71A36?logo=apachemaven)](https://maven.apache.org/)
-[![Status](https://img.shields.io/badge/Status-Learning%20Project-blue)](#)
+[![CI](https://img.shields.io/badge/CI-Core%20Path%20Blocking-success)](.github/workflows/ci.yml)
+[![Status](https://img.shields.io/badge/Status-Business%20Agent%20Showcase-blue)](#)
 
-## 项目主周期（Main Timeline）
+## 业务闭环
 
-- `main 日期`：`2025.12 - 2026.01`
-- `推进次数`：约 `14` 次（十几次迭代）
+`tianji-ai-agent` 不再定位为“学习型 AI 工程合集”，而是一个围绕在线课程业务搭建的智能体样板项目。它要讲清楚一件事：当用户说“我想学 Java，帮我推荐并下单”时，系统如何完成意图识别、课程查询、订单预确认、结构化卡片回传和流式交互。
 
-这是一个面向真实业务场景的 AI 智能体工程项目，目标不是“只会调用模型接口”，而是完整走通：
-从大模型接入、Prompt 设计、Tool Calling、RAG 检索增强、会话记忆、路由工作流多智能体，到 MCP 与多模态语音能力，再到前端原型与 UI 交互设计落地。
+核心链路：
 
-仓库整合了三类核心资产：
+1. 用户在聊天前端输入课程咨询、推荐或购买问题。
+2. `tj-aigc` 接收 `/chat` 请求，建立会话上下文和附件上下文。
+3. `RouteAgent` 判断意图，路由到 `RecommendAgent`、`BuyAgent`、`ConsultAgent` 或 `KnowledgeAgent`。
+4. 子 Agent 通过 `CourseTools`、`OrderTools` 调用课程和交易微服务。
+5. `ToolResultHolder` 把工具结果转成 `PARAM` 事件，和模型文本一起通过 SSE 返回。
+6. 前端消费 `DATA / PARAM / STOP` 事件，渲染课程卡片、订单卡片、引用来源和停止生成状态。
 
-- `代码/`：后端与智能体工程实现（Java + Spring AI + 微服务）
-- 原型与 UI 大体积素材：已从主仓库拆分，按 `docs/resource-index.md` 获取资源包
+## 一眼看懂
 
-如果你想搭建一个“能跑、能扩展、能解释其设计逻辑”的 AI 助手工程，这个仓库可以作为一套完整参考骨架。
+```mermaid
+flowchart LR
+    U["用户提问<br/>推荐课程 / 查详情 / 预下单 / 知识问答"] --> FE["Chat UI<br/>会话、附件、语音入口"]
+    FE -->|POST /chat, SSE| API["tj-aigc ChatController"]
+    API --> ROUTE["RouteAgent<br/>意图识别"]
+    ROUTE -->|RECOMMEND| REC["RecommendAgent<br/>课程推荐"]
+    ROUTE -->|BUY| BUY["BuyAgent<br/>购买下单"]
+    ROUTE -->|CONSULT| CON["ConsultAgent<br/>课程咨询"]
+    ROUTE -->|KNOWLEDGE| KNOW["KnowledgeAgent<br/>知识讲解"]
+    REC --> COURSE["CourseTools<br/>课程查询"]
+    CON --> COURSE
+    BUY --> ORDER["OrderTools<br/>预下单"]
+    COURSE --> PARAM["ToolResultHolder<br/>结构化参数"]
+    ORDER --> PARAM
+    KNOW --> STREAM["SSE DATA"]
+    PARAM --> STREAM["SSE DATA + PARAM + STOP"]
+    STREAM --> CARD["前端课程/订单/引用卡片"]
+```
 
-## 目录
+```mermaid
+sequenceDiagram
+    participant User as 用户
+    participant Web as Chat UI
+    participant Chat as ChatController
+    participant Route as RouteAgent
+    participant Agent as 子 Agent
+    participant Tool as CourseTools/OrderTools
+    participant Biz as 课程/交易微服务
+    participant SSE as SSE Stream
 
-- [1. 项目定位](#1-项目定位)
-- [2. 仓库结构](#2-仓库结构)
-- [3. 课程文档与代码映射](#3-课程文档与代码映射)
-- [4. 架构总览](#4-架构总览)
-- [5. 核心模块拆解](#5-核心模块拆解)
-- [6. 快速开始](#6-快速开始)
-- [7. 原型与 UI 资产说明](#7-原型与-ui-资产说明)
-- [8. 安全与密钥管理](#8-安全与密钥管理)
-- [9. 常见问题](#9-常见问题)
-- [10. 学习路径建议](#10-学习路径建议)
-- [项目设计补充](#项目设计补充)
-- [11. README 写作参考](#11-readme-写作参考)
-- [12. 贡献与许可](#12-贡献与许可)
+    User->>Web: 输入“帮我买这门 Java 课”
+    Web->>Chat: POST /chat {question, sessionId, attachmentIds}
+    Chat->>Route: process(question, sessionId)
+    Route-->>Chat: BUY
+    Chat->>Agent: BuyAgent.processStream(...)
+    Agent->>Tool: prePlaceOrder(courseIds, ToolContext)
+    Tool->>Biz: Feign 调用 /orders/prePlaceOrder
+    Biz-->>Tool: OrderConfirmVO
+    Tool-->>Agent: PrePlaceOrder
+    Agent-->>SSE: DATA 文本增量
+    Agent-->>SSE: PARAM {prePlaceOrder}
+    Agent-->>SSE: STOP
+    SSE-->>Web: 流式文本 + 订单卡片参数
+    Web-->>User: 展示推荐说明和订单确认卡片
+```
 
-## 1. 项目定位
+## 聊天界面截图
 
-### 1.1 这不是单点 Demo，而是一条完整工程链路
+| 默认对话 | 课程卡片 |
+|---|---|
+| ![聊天默认态](docs/assets/screenshots/chat-default.jpg) | ![课程卡片](docs/assets/screenshots/course-card.jpg) |
 
-很多 AI 项目只演示 `chat()` 调用成功，但一旦进入业务场景会立刻遇到问题：
+| 购买课程 | 语音入口 |
+|---|---|
+| ![购买课程卡片](docs/assets/screenshots/order-card.jpg) | ![语音入口](docs/assets/screenshots/voice-entry.jpg) |
 
-- 如何让模型稳定遵循角色与流程？
-- 如何安全地把“查课程、预下单”之类业务动作交给 Tool？
-- 如何解决历史会话、停止生成、流式交互体验？
-- 如何从“单智能体”过渡到“路由 + 专业子智能体”？
-- 如何把能力扩展到语音、多模态、MCP 外部工具生态？
-
-本项目正是围绕这些问题展开，覆盖了“能上线”的关键技术环节。
-
-### 1.2 适合谁
-
-- 想从 0 到 1 实战 Spring AI 的后端开发者
-- 想把 AI 功能嵌入既有微服务业务系统的工程团队
-- 想把课程学习内容转成可维护代码资产的学习者
-- 想要“代码 + 原型 + UI”闭环样例的产品/技术协同团队
-
-## 2. 仓库结构
+## 项目结构
 
 ```text
 .
 ├── README.md
 ├── docs
-│   └── resource-index.md
-├── 代码
-│   ├── openai-java-demo
-│   ├── my-spring-ai
-│   ├── my-spring-ai-mcp
-│   └── tjxt
-└── (external assets) prototype/ui packages
+│   ├── agent-design.md
+│   ├── demo-script.md
+│   ├── mcp-extension-guide.md
+│   ├── assets/screenshots
+│   └── evaluation
+├── web/chat-ui
+│   └── 课程业务 Agent 前端原型
+└── 代码
+    ├── openai-java-demo
+    ├── my-spring-ai
+    ├── my-spring-ai-mcp
+    └── tjxt
+        └── tj-aigc
 ```
 
-### 2.1 三大目录职责
-
-| 目录 | 内容类型 | 作用 |
+| 模块 | 角色 | 展示价值 |
 |---|---|---|
-| `代码/` | Java 工程源码 | 智能体、微服务、MCP、多模态与业务集成主战场 |
-| `天机agent V0.3/` | Web 原型页面 | 聊天窗口、历史对话、联想输入、语音交互等前端流程演示 |
-| `天机AI助手/` | UI 视觉稿 | 组件规范、页面状态、问答社区与助手悬浮窗设计素材 |
+| `web/chat-ui` | React 聊天前端 | 会话、SSE、停止生成、附件、语音入口、课程/订单卡片 |
+| `代码/tjxt/tj-aigc` | 业务 Agent 核心 | RouteAgent、子 Agent、Tool Calling、Redis 记忆、附件服务 |
+| `代码/tjxt/tj-api` | 业务微服务契约 | CourseClient、TradeClient 等 Feign 接口 |
+| `代码/openai-java-demo` | SDK 入门样例 | 保留教学路径，用课程推荐助手解释基础调用 |
+| `代码/my-spring-ai` | Spring AI 能力样例 | ChatClient、Advisor、Tool、RAG、多模态基础能力 |
+| `代码/my-spring-ai-mcp` | MCP 扩展示例 | 把工具封装为可复用 MCP Server/Client |
 
-### 2.2 项目规模速览
+## Demo 闭环
 
-基于当前仓库统计：
+演示脚本见 [docs/demo-script.md](docs/demo-script.md)。固定准备 5 个问题：
 
-- Java 源文件：约 `899` 个
-- 原型 HTML 页面：约 `21` 个
-- UI 图片资产：约 `24` 张
-- 微服务模块（`tjxt`）：`17` 个子模块
-
-## 3. 课程文档与代码映射
-
-本 README 结合了课程的 7 份文档主线，并映射到仓库中的实际代码实现。
-
-| 课程文档 | 核心主题 | 对应代码落点 | 你能直接验证什么 |
+| 场景 | 演示问题 | 命中的后端链路 | 前端展示 |
 |---|---|---|---|
-| `1.玩转AI大模型.md` | 大模型原理、Prompt 工程、OpenAI/百炼接入 | `代码/openai-java-demo` | 单轮/多轮/流式调用，课程推荐助手雏形 |
-| `2.SpringAI入门.md` | ChatClient、Advisors、Tool、RAG | `代码/my-spring-ai` | SSE 流式聊天、天气 Tool、向量检索与多模态 |
-| `3.基本功能.md` | 在天机项目中集成 AI、会话基础能力 | `代码/tjxt/tj-aigc` | 新建会话、历史会话、停止生成、聊天入口 |
-| `4.课程咨询与购买.md` | Tool Calling 业务化（课程查询/购买） | `代码/tjxt/tj-aigc/tools` | `queryCourseById`、`prePlaceOrder` 链路 |
-| `5.路由工作流.md` | 多智能体路由与协同 | `代码/tjxt/tj-aigc/agent` | Route/Recommend/Buy/Consult/Knowledge 多 Agent 协作 |
-| `6.平台智能体、通用文本模型、语音.md` | 平台智能体接入、文本与语音能力 | `代码/tjxt/tj-aigc/controller/AudioController.java` | TTS 流式输出、STT 语音转文本 |
-| `7.SpringAI高级与私有大模型.md` | MCP、多模态、结构化输出、私有模型 | `代码/my-spring-ai-mcp`、`代码/my-spring-ai` | MCP Client/Server、多模态输入输出 |
+| 课程推荐 | `我零基础，想 3 个月入门 Java 后端，帮我推荐课程` | `RouteAgent -> RecommendAgent -> CourseTools` | 推荐说明、课程卡片 |
+| 课程详情 | `介绍一下 1589905661084430337 这门课适合谁，价格多少` | `RouteAgent -> ConsultAgent -> CourseTools` | 课程详情卡片 |
+| 预下单 | `我要购买课程 1589905661084430337，帮我生成确认订单` | `RouteAgent -> BuyAgent -> OrderTools` | 订单确认卡片 |
+| 知识问答 | `Java 中 Redis 缓存穿透是什么，怎么处理` | `RouteAgent -> KnowledgeAgent` | 流式知识回答 |
+| 语音/多模态入口 | `上传一张课程截图，或用语音问“这门课适合我吗”` | `/attachment/upload`、`/audio/stt`、`/audio/tts-stream`、`/chat` | 附件引用、语音输入、流式回复 |
 
-## 4. 架构总览
+## 后端核心
 
-### 4.1 业务架构（代码 + 原型 + UI）
+`tj-aigc` 的接口以业务闭环为中心，而不是为了罗列框架能力：
 
-```mermaid
-flowchart LR
-    A[天机前端/原型页面] --> B[网关与业务微服务 tjxt]
-    B --> C[tj-aigc 智能体服务]
-    C --> D[大模型服务 DashScope/OpenAI Compatible]
-    C --> E[向量库 VectorStore]
-    C --> F[Redis Chat Memory]
-    C --> G[业务工具 Tool Calling]
-    G --> H[课程/交易等内部微服务]
-    C --> I[MCP Client]
-    I --> J[MCP Server 外部工具]
-```
-
-### 4.2 多智能体路由工作流
-
-```mermaid
-flowchart TD
-    U[用户问题] --> R[RouteAgent 意图识别]
-    R --> RE[RecommendAgent]
-    R --> BU[BuyAgent]
-    R --> CO[ConsultAgent]
-    R --> KN[KnowledgeAgent]
-    RE --> T1[CourseTools]
-    BU --> T2[OrderTools]
-    CO --> T1
-    KN --> OUT[流式答案 + 参数事件]
-    T1 --> OUT
-    T2 --> OUT
-```
-
-## 5. 核心模块拆解
-
-### 5.1 `代码/openai-java-demo`：大模型调用基础与 Prompt 入门
+| 接口 | 作用 | 前端对应 |
+|---|---|---|
+| `POST /session?n=4` | 新建会话并返回推荐问题 | 新会话按钮、示例问题 |
+| `GET /session/history` | 查询历史会话分组 | 左侧会话列表 |
+| `GET /session/{sessionId}` | 查询单会话消息 | 切换历史会话 |
+| `POST /chat` | SSE 流式 Agent 对话 | 主输入框发送 |
+| `POST /chat/stop` | 停止当前生成 | 停止按钮 |
+| `POST /attachment/upload` | 上传文档/图片并返回附件 ID | 附件按钮 |
+| `POST /audio/stt` | 语音转文本 | 语音输入入口 |
+| `POST /audio/tts-stream` | 文本转语音 | 语音播放入口 |
 
 关键类：
 
-- `CompletionsDemo`：标准请求示例
-- `CompletionsStreamingDemo`：流式输出
-- `CompletionsMultipleRoundsDemo`：多轮对话状态维护
-- `AICourseAssistant`：课程推荐助手原型
+| 类 | 说明 |
+|---|---|
+| `ChatController` | 统一接入聊天、停止生成和模板接口 |
+| `AgentServiceImpl` | 调用 `RouteAgent` 并分发到子 Agent |
+| `RouteAgent` | 意图识别，只做路由，不使用附件上下文 |
+| `RecommendAgent` | 课程推荐，绑定 `CourseTools` 与 RAG Advisor |
+| `ConsultAgent` | 课程咨询，查询课程详情和补充解释 |
+| `BuyAgent` | 购买链路，绑定 `OrderTools` 做预下单 |
+| `KnowledgeAgent` | 通用知识讲解，不强依赖业务工具 |
+| `CourseTools` | 调课程微服务，返回 `CourseInfo` |
+| `OrderTools` | 调交易微服务，返回 `PrePlaceOrder` |
+| `RedisChatMemory` | 会话记忆读写，支撑历史上下文 |
+| `InMemoryAttachmentService` | dev/demo 可用的附件解析、切片、引用来源服务 |
 
-作用：
+更多设计说明见 [docs/agent-design.md](docs/agent-design.md)。
 
-- 帮你理解“从原生 SDK 调用到业务对话结构化”的过渡
-- 适合先把模型接口打通，再进入 Spring AI 封装层
+## 快速开始
 
-### 5.2 `代码/my-spring-ai`：Spring AI 实战主干
-
-关键能力：
-
-- `ChatController`：普通对话、SSE 流式对话、向量检索、多模态聊天接口
-- `ChatServiceImpl`：
-  - `ChatClient` 调用链
-  - `QuestionAnswerAdvisor` 接入 RAG
-  - 会话记忆参数注入
-  - 多模态 `qwen-omni-turbo` 示例
-- `WeatherTools`：`@Tool` 注解工具调用样例
-- `CityEmbedding`：向量化数据写入与检索配套
-
-这个模块的价值在于：
-把“框架能力点”都落在了可运行接口上，便于你逐段替换成自己的业务。
-
-### 5.3 `代码/my-spring-ai-mcp`：MCP 客户端/服务端双向示例
-
-子模块：
-
-- `my-spring-ai-mcp-server`
-  - `McpConfig` 对外暴露 Tool Callback
-  - `WeatherService` 作为可被 MCP 调用的工具服务
-- `my-spring-ai-mcp-client`
-  - `ChatServiceImpl` 演示模型通过 MCP 扩展能力
-  - `mcp-servers.json` 管理 MCP Server 列表
-
-价值：
-
-- 展示“把工具标准化为 MCP 服务”后的复用能力
-- 便于后续接入浏览器自动化、地图、搜索、企业内系统能力
-
-### 5.4 `代码/tjxt`：微服务业务底座 + `tj-aigc` 智能体核心
-
-`tjxt` 聚合了 `17` 个模块（用户、课程、交易、支付、消息、网关等），其中 `tj-aigc` 是本项目 AI 核心。
-
-### 5.4.1 `tj-aigc` 的核心接口
-
-- `POST /chat`：SSE 流式多智能体聊天
-- `POST /chat/stop`：停止生成
-- `POST /chat/text`：通用文本聊天
-- `GET /chat/templates`：模板推荐
-- `POST /session`：新建会话
-- `GET /session/history`：历史会话分组（当天/30天/1年/更早）
-- `GET /session/{sessionId}`：单会话历史明细
-- `POST /embedding`：向量写入
-- `POST /audio/tts-stream`：文本转语音（流式）
-- `POST /audio/stt`：语音转文本
-
-### 5.4.2 `tj-aigc` 的关键设计
-
-1. 路由工作流多智能体
-
-- `RouteAgent` 做意图判断
-- 将请求分发到 `RecommendAgent / BuyAgent / ConsultAgent / KnowledgeAgent`
-- 各 Agent 可独立定义 `systemMessage`、`tools`、`advisors`
-
-2. 业务工具结果回传
-
-- `CourseTools` 与 `OrderTools` 调用内部微服务
-- 通过 `ToolResultHolder` 把参数化结果回写到事件流
-- `ToolResultHolder` 已补并发安全和过期清理，降低多工具并发写入与临时数据堆积风险
-- 前端可据此渲染课程卡片、下单信息等结构化内容
-
-3. 可中断的流式输出
-
-- `GENERATE_STATUS` 跟踪会话生成状态
-- 支持中途停止并保存已生成内容到历史记忆
-
-4. 收敛式 RAG 检索
-
-- `ConsultAgent`、`RecommendAgent` 与增强型 `ChatServiceImpl` 已改为使用当前问题作为检索 query
-- 默认将召回数量收敛到 `topK=5`，并加入相似度阈值，减少“把整库塞进上下文”带来的噪声和成本
-
-5. Redis 会话记忆
-
-- `RedisChatMemory` 统一消息序列化存储
-- 支持会话读取、清理、以及路由中间消息优化
-
-## 6. 快速开始
-
-> 建议先跑 `openai-java-demo` -> 再跑 `my-spring-ai` -> 再看 `tjxt/tj-aigc`，能明显降低学习成本。
-
-### 6.1 一键启动（`dev-demo`，推荐）
-
-这套仓库现在支持一个默认可演示的本地模式：
-
-- 前端：`web/chat-ui`，默认保留 `demo` 优先体验
-- 后端：`代码/tjxt/tj-aigc`，通过 `dev-demo` profile 提供 mock 会话、历史记录与 SSE 输出
-- 中间件：MySQL / Redis 由 `docker-compose.dev.yml` 一次性拉起
-- 不需要真实模型 API Key，也不需要额外登录 Token
-
-第一次启动推荐直接用脚本：
+推荐先跑 `dev-demo`，不用真实模型 Key，也不用登录。
 
 ```bash
-# macOS
 bash scripts/quick-start-mac.sh
 ```
 
+Windows:
+
 ```powershell
-# Windows PowerShell
 powershell -ExecutionPolicy Bypass -File .\scripts\quick-start-win.ps1
 ```
 
-```bat
-:: Windows CMD
-scripts\quick-start-win.bat
-```
-
-可选参数（按需）：
-
-- `--with-nacos` / `-WithNacos`：启用 Nacos profile
-- `--with-search` / `-WithSearch`：启用 Elasticsearch profile
-- `--detach` / `-Detach`：后台运行
-- `--reset-env` / `-ResetEnv`：用 `.env.example` 覆盖现有 `.env`
-
-手动方式（等价）也可用，两步即可：
+手动启动：
 
 ```bash
 cp .env.example .env
 docker compose -f docker-compose.dev.yml up --build
 ```
 
-启动完成后可以直接访问：
+默认访问：
 
-- 前端工作台：`http://127.0.0.1:5173`
-- AIGC 后端：`http://127.0.0.1:8094`
-- 热门会话接口：`http://127.0.0.1:8094/session/hot`
+| 服务 | 地址 |
+|---|---|
+| Chat UI | `http://127.0.0.1:5173` |
+| AIGC 后端 | `http://127.0.0.1:8094` |
+| 热门问题接口 | `http://127.0.0.1:8094/session/hot` |
 
-默认演示信息：
+`dev-demo` 说明：
 
-- Profile：`dev-demo`
+- 后端 profile：`dev-demo`
 - 演示用户 ID：`10001`
 - 演示 Token：`dev-demo-token`
-- 后端鉴权：已关闭，本地演示无需登录
+- 本地演示默认关闭登录拦截
+- 前端默认进入 demo 模式，也可以切到真实 API 模式联调
 
-如果你只想先看前端界面，即使后端尚未完全就绪，前端也会优先展示 `demo` 模式，不会一上来就因为 `401` 卡住。
+## 本地验证
 
-按需启用 Nacos 与 Elasticsearch：
-
-```bash
-docker compose -f docker-compose.dev.yml --profile nacos --profile search up --build
-```
-
-### 6.2 环境要求
-
-- JDK `17+`
-- Maven `3.9+`
-- Docker / Docker Compose（推荐，用于一键启动）
-- Redis / MySQL / Elasticsearch（按模块启用，可由 `docker-compose.dev.yml` 拉起）
-- 可用的大模型 API Key（仅在切换回真实模型时需要）
-
-### 6.3 本地中间件启动（进阶）
-
-如果你不想直接使用一键启动，也可以只拉中间件，然后手动运行后端：
+前端：
 
 ```bash
-docker compose -f docker-compose.dev.yml up -d mysql redis
+cd web/chat-ui
+npm ci
+npm run lint
+npm run test:run
+npm run build
 ```
 
-按需加上 Nacos 与 Elasticsearch：
-
-```bash
-docker compose -f docker-compose.dev.yml up -d mysql redis nacos elasticsearch
-```
-
-### 6.4 环境变量
-
-先复制模板：
-
-```bash
-cp .env.example .env
-```
-
-然后按需导出/覆盖（示例）：
-
-```bash
-# 一键启动默认读取这些本地开发值
-export AIGC_BACKEND_PROFILE="dev-demo"
-export AIGC_MYSQL_DATABASE="tj_aigc"
-export AIGC_MYSQL_USERNAME="tianji"
-export AIGC_MYSQL_PASSWORD="tianji123"
-export AIGC_REDIS_HOST="127.0.0.1"
-export AIGC_REDIS_PORT="6379"
-
-# 大模型（阿里百炼 / OpenAI 兼容）
-export ALIYUN_API_KEY="your_key"
-
-# 可选：部分代码优先读取 AI_API_KEY
-export AI_API_KEY="your_key"
-
-# 百炼应用调用测试（tj-aigc 测试）
-export BAILIAN_USER_TOKEN="your_token"
-
-# MCP 地图服务（按需）
-export AMAP_MAPS_API_KEY="your_amap_key"
-
-# 短信模块（已改为环境变量占位）
-export ALI_SMS_ACCESS_ID="your_access_id"
-export ALI_SMS_ACCESS_SECRET="your_access_secret"
-
-# tj-aigc 本地运行（不依赖 Nacos 时可直接使用本地默认值）
-export AIGC_DATASOURCE_URL="jdbc:mysql://127.0.0.1:3306/tj_aigc?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false"
-export AIGC_DATASOURCE_USERNAME="root"
-export AIGC_DATASOURCE_PASSWORD="123456"
-export AIGC_REDIS_HOST="127.0.0.1"
-export AIGC_REDIS_PORT="6379"
-```
-
-### 6.5 模块级启动示例
-
-1) OpenAI Java 示例
-
-```bash
-cd 代码/openai-java-demo
-mvn -DskipTests compile
-```
-
-2) Spring AI 示例
-
-```bash
-cd 代码/my-spring-ai
-mvn -DskipTests spring-boot:run
-```
-
-3) MCP Server + MCP Client
-
-```bash
-cd 代码/my-spring-ai-mcp/my-spring-ai-mcp-server
-mvn -DskipTests spring-boot:run
-
-cd ../my-spring-ai-mcp-client
-mvn -DskipTests spring-boot:run
-```
-
-4) 天机 AI 微服务（按需）
-
-```bash
-cd 代码/tjxt
-mvn -pl tj-aigc -am -DskipTests spring-boot:run -Dspring-boot.run.profiles=dev-demo
-```
-
-说明：
-
-- `dev-demo` profile 已关闭真实模型依赖与登录拦截，适合演示、联调和面试讲解
-- 如果你要切回真实模型，再把 `AIGC_BACKEND_PROFILE` 改为 `local`，并补充对应模型 Key 与业务环境
-- `tjxt` 仍然是完整微服务体系，后续接入真实课程、交易、搜索能力时，建议结合课程环境逐步补齐
-
-构建补充：
-
-- 若使用 JDK 23+，仓库已在 `代码/tjxt/pom.xml` 的 `maven-compiler-plugin` 中显式配置 `<proc>full</proc>`，用于确保 Lombok 注解处理正常。
-- 若需要在 `代码/tjxt/tj-aigc` 目录单独执行 `mvn -DskipTests compile`，请先在 `代码/tjxt` 根目录执行 `mvn -pl tj-aigc -am -DskipTests install`，预装兄弟模块产物（如 `tj-api`、`tj-auth-resource-sdk`）。
-
-### 6.6 接口验证示例
-
-以 `my-spring-ai` 为例：
-
-```bash
-curl -X POST http://localhost:8099/chat \
-  -H 'Content-Type: application/json' \
-  -d '{"question":"帮我推荐一个Java学习路径","sessionId":"s1"}'
-```
-
-流式接口示例：
-
-```bash
-curl -N -X POST http://localhost:8099/chat/stream \
-  -H 'Content-Type: application/json' \
-  -d '{"question":"解释一下RAG","sessionId":"s1"}'
-```
-
-### 6.6 测试与 CI 对齐
-
-`tj-aigc` 的测试分为两类：
-
-- 默认单元测试：可在本地和 CI 稳定运行
-- 手工集成测试：依赖模型、Nacos、业务中间件，默认不在 CI 中执行
-
-1) 运行默认单元测试（推荐日常开发使用）
-
-```bash
-mvn -B -ntp -f 代码/tjxt/tj-aigc/pom.xml test
-```
-
-2) 运行手工集成测试（需要完整环境与密钥）
-
-```bash
-mvn -B -ntp -f 代码/tjxt/tj-aigc/pom.xml -Pmanual-integration-tests test
-```
-
-3) 本地模拟 CI 关键链路（与仓库工作流一致）
+后端核心链路：
 
 ```bash
 mvn -B -ntp -f 代码/tjxt/pom.xml -pl tj-aigc -am -DskipTests package
 mvn -B -ntp -f 代码/tjxt/tj-aigc/pom.xml test
 ```
 
-## 7. 原型与 UI 资产说明
-
-### 7.1 原型与 UI 资源获取
-
-为降低主仓库体积，`天机agent V0.3/` 与 `天机AI助手/` 已改为外部资源包管理。
-
-- 资源索引：`docs/resource-index.md`
-- 建议分发方式：GitHub Releases / 独立 assets 仓库 / Git LFS
-
-### 7.2 资源使用说明
-
-- 原型资源包：用于交互流程演示（默认态、输入态、语音态、历史会话态等）
-- UI 资源包：用于视觉稿与状态稿展示（聊天、问答、语音、规范页等）
-
-说明：图稿中可能出现课程演示品牌/讲师文案（例如“天机学堂”“黑马小可爱”等），用于教学演示语境；若用于正式商用，请先统一替换品牌与人物文案。
-
-## 8. 安全与密钥管理
-
-为了能安全公开仓库，项目已进行一次密钥治理：
-
-- 已移除/替换明显硬编码 Token 与 API Key
-- 改为环境变量读取（示例见上方 `6.2`）
-- 清理了历史日志与构建产物目录，避免意外泄漏
-
-建议在你每次发布前执行：
+手工集成测试依赖真实模型、Nacos、业务中间件和密钥，默认通过 JUnit Tag 排除：
 
 ```bash
-# 检查常见明文 key
-rg -n --pcre2 'sk-[A-Za-z0-9]{20,}|LTAI[0-9A-Za-z]{12,}|AKIA[0-9A-Z]{16}' .
-
-# 检查 JWT
-rg -n --pcre2 'eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}' .
+mvn -B -ntp -f 代码/tjxt/tj-aigc/pom.xml -Pmanual-integration-tests test
 ```
 
-## 9. 常见问题
+## CI 与质量门槛
 
-### Q1：为什么我能编译 demo，但 `tjxt` 跑不起来？
+仓库把“展示项目必须稳定”的链路设为阻断：
 
-`tjxt` 是完整微服务体系，不仅依赖 JDK/Maven，还依赖配置中心、数据库、Redis、ES、网关、鉴权链路等。建议按课程环境逐项补齐，再启动 `tj-aigc`。
+- `web/chat-ui`：lint、unit test、build
+- `tj-aigc`：依赖链安装、单元测试
+- `my-spring-ai`：编译打包
+- Python smoke tests：仓库文档和脚本基础检查
 
-### Q2：为什么流式输出会突然结束？
+非关键扫描保留为 advisory job，例如 Ruff 建议、通用 compileall、Gitleaks 扫描，避免因为可选工具噪声挡住核心业务链路。
 
-可能触发了主动停止逻辑（`/chat/stop`）或会话状态从 `GENERATE_STATUS` 中被移除。请先检查会话 ID 是否一致。
+## MCP 扩展
 
-### Q3：工具调用结果为什么没在前端展示成卡片？
+MCP 不是本项目的主叙事，但保留为“后续把课程、交易、搜索、浏览器自动化等工具标准化”的扩展位。
 
-请确认前端是否消费了 `PARAM` 类型事件，并按 `ToolResultHolder` 回传字段渲染结构化 UI。当前实现已经给工具结果缓存增加了并发安全与 TTL 清理，如果仍然丢卡片，优先检查前端事件消费顺序。
+扩展指南见 [docs/mcp-extension-guide.md](docs/mcp-extension-guide.md)。
 
-### Q4：MCP 部分怎么扩展到自定义工具？
+## 展示路线
 
-在 `my-spring-ai-mcp-server` 新增 `@Tool` 方法并通过 `ToolCallbacks.from(...)` 暴露，再在 client 侧配置对应 server 即可。
+适合面试、简历和 GitHub 项目页的讲法：
 
-## 10. 学习路径建议
+1. 先讲业务问题：课程咨询转化链路需要智能体理解意图并调用业务工具。
+2. 再讲架构：RouteAgent 做分发，子 Agent 负责推荐、购买、咨询、知识问答。
+3. 再讲工程细节：SSE 流式事件、ToolResultHolder 参数回传、RedisChatMemory、停止生成、附件引用。
+4. 最后现场演示：输入购课问题，观察工具调用参数回传，前端展示课程/订单卡片。
 
-如果你是第一次接触这套工程，建议按下面顺序学习：
+录屏建议：
 
-1. 先跑通 `openai-java-demo`，理解单轮/多轮/流式
-2. 进入 `my-spring-ai`，掌握 ChatClient + Advisor + Tool + RAG
-3. 学习 `my-spring-ai-mcp`，理解 MCP 对“工具复用”的价值
-4. 阅读 `tj-aigc` 的 `controller -> service -> agent -> tools -> memory` 链路
-5. 最后结合 `天机agent V0.3` + `天机AI助手`，把交互与后端事件流对应起来
+```text
+用户输入购课问题 -> 后端 RouteAgent 命中 BuyAgent -> OrderTools 预下单 -> SSE 返回 DATA/PARAM/STOP -> 前端渲染订单卡片
+```
 
-这条路线和课程 7 份文档的演进顺序一致，学习成本最低。
+## 资源说明
 
-## 项目设计补充
+原始大体积设计稿和原型包默认不纳入主仓库，见 [docs/resource-index.md](docs/resource-index.md)。README 中使用的是压缩后的展示截图，位于 `docs/assets/screenshots`。
 
-### 实现路径
+## Release
 
-项目按能力成熟度分阶段推进：
+当前展示版发布说明见 [CHANGELOG.md](CHANGELOG.md)。
 
-1. 先用 `openai-java-demo` 跑通单轮、多轮和流式调用，验证模型接入；
-2. 再用 `my-spring-ai` 验证 ChatClient、Tool、RAG、多模态等通用能力；
-3. 然后把这些能力接入 `tjxt/tj-aigc`，与真实业务微服务结合，补会话、历史记录、停止生成、课程工具调用等功能；
-4. 最后再补前端原型和 UI 设计稿，让整套工程不仅“能跑”，也能展示完整的交互和系统结构。
+## 许可
 
-### 关键难点
-
-项目的主要难点在于将多个 AI 能力组合成稳定的业务链路：
-
-- 多智能体不是简单拆分几个类，而是要解决路由、工具调用和结果输出之间的协同问题；
-- RAG 需要在召回效果、上下文长度和回答稳定性之间取得平衡；
-- Tool Calling 不只是演示调用成功，还要约束业务边界，避免模型越权操作；
-- 流式输出、停止生成、历史会话、结构化事件返回叠加后，整体复杂度会明显提升。
-
-### 当前处理方式
-
-当前实现采用了多层拆分：
-
-- 用 `RouteAgent` 做意图识别，再把请求分发给 `RecommendAgent / BuyAgent / ConsultAgent / KnowledgeAgent`，让多智能体职责清晰；
-- 用 `CourseTools`、`OrderTools` 承接真实业务动作，并通过线程安全、带过期清理的 `ToolResultHolder` 把工具结果回写给前端，支持卡片化展示；
-- 用 `RedisChatMemory` 维护会话消息，支持历史读取、上下文延续和中途停止生成后的保存；
-- 通过流式接口返回模型输出，同时跟踪生成状态，保证前端可以做实时渲染和中断控制；
-- 在咨询与推荐场景中使用“问题驱动 + 阈值约束”的 RAG 检索，避免召回噪声过大；
-- 将 RAG、Tool、会话、语音、多模态等能力拆到不同模块，降低耦合，便于逐步演进。
-
-### 后续优化方向
-
-如果继续往生产化方向推进，优先级较高的方向包括：
-
-- 增加提示词版本管理、效果评测和回放机制；
-- 为多智能体路由增加更明确的策略评估与回退逻辑；
-- 优化 RAG 的切片、召回、重排和来源展示，提升可解释性；
-- 增加链路追踪、成本监控、模型切换和失败降级；
-- 统一前后端事件协议，让卡片、工具结果和流式内容更稳定地对齐。
-
-## 11. README 写作参考
-
-本 README 在结构上参考了 GitHub 高关注项目的常见写法，重点借鉴了“信息分层清晰、快速上手优先、工程事实可验证”的组织方式：
-
-- React README（简洁价值主张 + 安装/文档/示例）
-- FastAPI README（核心特性先行 + 快速开始 + 丰富资源导航）
-- Spring AI README（能力矩阵 + 架构定位 + 构建说明）
-
-参考链接：
-
-- [React README](https://github.com/facebook/react/blob/main/README.md)
-- [FastAPI README](https://github.com/fastapi/fastapi/blob/master/README.md)
-- [Spring AI README](https://github.com/spring-projects/spring-ai/blob/main/README.md)
-
-## 12. 贡献与许可
-
-### 12.1 贡献建议
-
-欢迎以 Issue/PR 的方式提交：
-
-- 文档修订与勘误
-- 运行脚本优化
-- 新工具接入示例
-- 多智能体策略优化
-- 前端原型与后端事件协议对齐
-
-### 12.2 许可说明
-
-本项目采用 [MIT License](LICENSE) 开源发布。
-
-## 简历改造清单
-
-- 追踪文件：[docs/resume-upgrade-checklist.md](docs/resume-upgrade-checklist.md)
-- 评测清单：[docs/evaluation/multi-agent-eval-checklist.md](docs/evaluation/multi-agent-eval-checklist.md)
-- 评测模板脚本：[scripts/evaluation/generate_agent_eval_template.py](scripts/evaluation/generate_agent_eval_template.py)
-- CI 配置：[.github/workflows/ci.yml](.github/workflows/ci.yml)
-
-本轮已落地：多智能体评测与工程化基线文件，便于继续补路由测试和可观测性。
+本项目采用 [MIT License](LICENSE)。
