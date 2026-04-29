@@ -720,6 +720,85 @@ button {
   line-height: 1.45;
 }
 
+.business-card {
+  margin-top: 10px;
+  border-radius: 14px;
+  border: 1px solid #bed0ee;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(32, 65, 130, 0.12);
+  overflow: hidden;
+}
+
+.business-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, #eaf2ff 0%, #f8fbff 100%);
+  border-bottom: 1px solid #dbe7f8;
+}
+
+.business-card-head span {
+  color: #2350a4;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.business-card-head strong {
+  color: #132a58;
+  font-size: 0.98rem;
+  text-align: right;
+}
+
+.business-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.business-card-grid div {
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #f9fbff;
+  padding: 10px;
+}
+
+.business-card-grid span {
+  display: block;
+  color: #6b7893;
+  font-size: 0.78rem;
+  margin-bottom: 4px;
+}
+
+.business-card-grid strong {
+  color: #182f62;
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
+
+.business-card p {
+  margin: 0;
+  padding: 0 14px 14px;
+  color: #52617c;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.order-card .business-card-head {
+  background: linear-gradient(135deg, #fff3e2 0%, #fffaf3 100%);
+}
+
+.order-card .business-card-head span {
+  color: #9a5a0b;
+}
+
+.order-card .business-card-grid div:nth-child(4) strong {
+  color: #b45309;
+  font-size: 1.05rem;
+}
+
 .params-block {
   margin: 0;
   padding: 0 12px 12px;

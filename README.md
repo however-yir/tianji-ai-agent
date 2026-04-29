@@ -85,6 +85,8 @@ sequenceDiagram
 
 ## 聊天界面截图
 
+![Demo GIF](docs/assets/screenshots/demo.gif)
+
 | 默认对话 | 课程卡片 |
 |---|---|
 | ![聊天默认态](docs/assets/screenshots/chat-default.jpg) | ![课程卡片](docs/assets/screenshots/course-card.jpg) |

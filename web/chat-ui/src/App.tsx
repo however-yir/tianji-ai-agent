@@ -105,6 +105,24 @@ type ToolSummaryItem = {
   value: string;
 };
 
+type CourseCardData = {
+  id: string;
+  name: string;
+  price: number;
+  usePeople: string;
+  validDuration?: number;
+  detail?: string;
+};
+
+type OrderCardData = {
+  count: number;
+  totalAmount: number;
+  discountAmount: number;
+  payAmount: number;
+  orderId: string;
+  couponName?: string;
+};
+
 type ChatMessage = {
   id: string;
   role: MessageRole;
@@ -323,6 +341,52 @@ function normalizeText(value: unknown): string {
     }
   }
   return String(value);
+}
+
+function formatMoney(value: unknown): string {
+  const amount = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(amount)) {
+    return "¥0";
+  }
+  return `¥${amount.toLocaleString("zh-CN", { maximumFractionDigits: 2 })}`;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+}
+
+function extractCourseCard(params?: Record<string, unknown> | null): CourseCardData | null {
+  if (!params) {
+    return null;
+  }
+  const courseEntry = Object.entries(params).find(([key, value]) => key.startsWith("courseInfo_") && asRecord(value));
+  if (!courseEntry) {
+    return null;
+  }
+  const course = courseEntry[1] as Record<string, unknown>;
+  return {
+    id: normalizeText(course.id),
+    name: normalizeText(course.name) || "课程推荐",
+    price: Number(course.price || 0),
+    usePeople: normalizeText(course.usePeople) || "适合希望系统学习的同学",
+    validDuration: Number(course.validDuration || 0) || undefined,
+    detail: normalizeText(course.detail),
+  };
+}
+
+function extractOrderCard(params?: Record<string, unknown> | null): OrderCardData | null {
+  const order = asRecord(params?.prePlaceOrder);
+  if (!order) {
+    return null;
+  }
+  return {
+    count: Number(order.count || 0),
+    totalAmount: Number(order.totalAmount || 0),
+    discountAmount: Number(order.discountAmount || 0),
+    payAmount: Number(order.payAmount || 0),
+    orderId: normalizeText(order.orderId),
+    couponName: normalizeText(order.couponName),
+  };
 }
 
 function normalizePayload<T>(payload: unknown): T {
@@ -2081,6 +2145,76 @@ export default function App() {
                         </span>
                       ))}
                     </div>
+                  ) : null}
+
+                  {extractCourseCard(message.params) ? (
+                    <article className="business-card course-card" data-testid="course-card">
+                      {(() => {
+                        const course = extractCourseCard(message.params)!;
+                        return (
+                          <>
+                            <div className="business-card-head">
+                              <span>课程卡片</span>
+                              <strong>{course.name}</strong>
+                            </div>
+                            <div className="business-card-grid">
+                              <div>
+                                <span>课程 ID</span>
+                                <strong>{course.id}</strong>
+                              </div>
+                              <div>
+                                <span>价格</span>
+                                <strong>{formatMoney(course.price)}</strong>
+                              </div>
+                              <div>
+                                <span>适用人群</span>
+                                <strong>{course.usePeople}</strong>
+                              </div>
+                              <div>
+                                <span>有效期</span>
+                                <strong>{course.validDuration ? `${course.validDuration} 个月` : "长期可学"}</strong>
+                              </div>
+                            </div>
+                            {course.detail ? <p>{course.detail}</p> : null}
+                          </>
+                        );
+                      })()}
+                    </article>
+                  ) : null}
+
+                  {extractOrderCard(message.params) ? (
+                    <article className="business-card order-card" data-testid="order-card">
+                      {(() => {
+                        const order = extractOrderCard(message.params)!;
+                        return (
+                          <>
+                            <div className="business-card-head">
+                              <span>订单确认</span>
+                              <strong>订单号 {order.orderId}</strong>
+                            </div>
+                            <div className="business-card-grid">
+                              <div>
+                                <span>课程数量</span>
+                                <strong>{order.count}</strong>
+                              </div>
+                              <div>
+                                <span>金额</span>
+                                <strong>{formatMoney(order.totalAmount)}</strong>
+                              </div>
+                              <div>
+                                <span>优惠</span>
+                                <strong>{formatMoney(order.discountAmount)}</strong>
+                              </div>
+                              <div>
+                                <span>实付</span>
+                                <strong>{formatMoney(order.payAmount)}</strong>
+                              </div>
+                            </div>
+                            {order.couponName ? <p>{order.couponName}</p> : null}
+                          </>
+                        );
+                      })()}
+                    </article>
                   ) : null}
 
                   {message.toolSummary?.length ? (
