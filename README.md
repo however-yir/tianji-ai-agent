@@ -1,5 +1,7 @@
 # tianji-ai-agent
 
+> **Learning & showcase project** — demonstrating multi-agent routing, Tool Calling, and SSE streaming patterns with a real course-business scenario. For production-grade deployment with enterprise governance (JWT/RBAC, observability, async ingestion), see **[knowledgeops-agent](https://github.com/however-yir/knowledgeops-agent)**.
+
 课程业务 Agent 工程案例：用户提问 -> RouteAgent 意图识别 -> Recommend/Buy/Consult/Knowledge 子 Agent -> Tool Calling -> SSE 流式返回 -> 前端卡片展示。
 
 [![CI](https://github.com/however-yir/tianji-ai-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/however-yir/tianji-ai-agent/actions/workflows/ci.yml)
@@ -12,12 +14,12 @@
 
 ## AI 工程作品矩阵
 
-`tianji-ai-agent` 是 however-yir AI 工程作品矩阵中的“业务 Agent 工程案例”。这组主项目覆盖企业 RAG、业务 Agent、知识治理、AI 工程执行平台和云原生微服务集成五类方向。
+`tianji-ai-agent` 是 however-yir AI 工程作品矩阵中的“业务 Agent 工程案例（学习/展示用途）”。这组主项目覆盖企业 RAG、业务 Agent、知识治理、AI 工程执行平台和云原生微服务集成五类方向。
 
 | Repo | 定位 | 核心场景 | 技术重点 |
 |---|---|---|---|
 | [`knowledgeops-agent`](https://github.com/however-yir/knowledgeops-agent) | 企业级 Spring AI RAG 平台 | 企业知识问答、权限治理、可观测部署 | Spring AI、RAG、JWT/RBAC、异步入库、Observability |
-| [`tianji-ai-agent`](https://github.com/however-yir/tianji-ai-agent) | 业务 Agent 工程案例 | 课程咨询、课程推荐、购买流程、多智能体路由 | Java、Spring AI、Tool Calling、MCP、SSE、多模态 |
+| [`tianji-ai-agent`](https://github.com/however-yir/tianji-ai-agent) | 业务 Agent 工程案例（学习/展示用途） | 课程咨询、课程推荐、购买流程、多智能体路由 | Java、Spring AI、Tool Calling、MCP、SSE、多模态 |
 | [`nebula-kb`](https://github.com/however-yir/nebula-kb) | 知识运营中枢 | 知识入库、知识治理、检索问答、反馈闭环 | Django、PostgreSQL、Redis、知识资产生命周期 |
 | [`forgepilot-studio`](https://github.com/however-yir/forgepilot-studio) | AI 工程执行工作台 | AI 编程任务、执行编排、审计回放、团队工作台 | Python、FastAPI、React、Runtime Sandbox、MCP |
 | [`however-microservices-lab`](https://github.com/however-yir/however-microservices-lab) | 云原生微服务 + AI 集成实验室 | 多语言微服务、Kubernetes、gRPC、AI 服务接入 | Go、Python、Java、Node.js、C#、K8s、Ollama/Gemini |
