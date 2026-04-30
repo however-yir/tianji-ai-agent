@@ -24,6 +24,13 @@
 # Local runtime files
 *.log
 *.pid
+coverage/
+tmp/
+.runtime/
+
+# Local copy/conflict artifacts
+* 2
+* 2.*
 
 # External design/prototype asset packs (kept out of main repo)
 天机AI助手/

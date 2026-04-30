@@ -12,17 +12,9 @@
 [![CI](https://img.shields.io/badge/CI-Core%20Path%20Blocking-success)](.github/workflows/ci.yml)
 [![Status](https://img.shields.io/badge/Status-Business%20Agent%20Showcase-blue)](#)
 
-## AI 工程作品矩阵
+## 矩阵角色
 
-`tianji-ai-agent` 是 however-yir AI 工程作品矩阵中的“业务 Agent 工程案例（学习/展示用途）”。这组主项目覆盖企业 RAG、业务 Agent、知识治理、AI 工程执行平台和云原生微服务集成五类方向。
-
-| Repo | 定位 | 核心场景 | 技术重点 |
-|---|---|---|---|
-| [`knowledgeops-agent`](https://github.com/however-yir/knowledgeops-agent) | 企业级 Spring AI RAG 平台 | 企业知识问答、权限治理、可观测部署 | Spring AI、RAG、JWT/RBAC、异步入库、Observability |
-| [`tianji-ai-agent`](https://github.com/however-yir/tianji-ai-agent) | 业务 Agent 工程案例（学习/展示用途） | 课程咨询、课程推荐、购买流程、多智能体路由 | Java、Spring AI、Tool Calling、MCP、SSE、多模态 |
-| [`nebula-kb`](https://github.com/however-yir/nebula-kb) | 知识运营中枢 | 知识入库、知识治理、检索问答、反馈闭环 | Django、PostgreSQL、Redis、知识资产生命周期 |
-| [`forgepilot-studio`](https://github.com/however-yir/forgepilot-studio) | AI 工程执行工作台 | AI 编程任务、执行编排、审计回放、团队工作台 | Python、FastAPI、React、Runtime Sandbox、MCP |
-| [`however-microservices-lab`](https://github.com/however-yir/however-microservices-lab) | 云原生微服务 + AI 集成实验室 | 多语言微服务、Kubernetes、gRPC、AI 服务接入 | Go、Python、Java、Node.js、C#、K8s、Ollama/Gemini |
+`tianji-ai-agent` 是 however-yir AI 工程作品矩阵中的“业务 Agent 工程案例（学习/展示用途）”，负责展示课程推荐、课程咨询、预下单、多智能体路由、Tool Calling 和 SSE 卡片返回这一条业务闭环。完整项目矩阵见 [docs/project-matrix.md](docs/project-matrix.md)，面试讲解提纲见 [docs/interview-notes.md](docs/interview-notes.md)。
 
 ## 业务闭环
 
@@ -244,6 +236,8 @@ mvn -B -ntp -f 代码/tjxt/tj-aigc/pom.xml -Pmanual-integration-tests test
 - Python smoke tests：仓库文档和脚本基础检查
 
 非关键扫描保留为 advisory job，例如 Ruff 建议、通用 compileall、Gitleaks 扫描，避免因为可选工具噪声挡住核心业务链路。
+
+Spring AI 版本兼容说明见 [docs/spring-ai-version-note.md](docs/spring-ai-version-note.md)。
 
 ## MCP 扩展
 
