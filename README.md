@@ -98,15 +98,20 @@ sequenceDiagram
 │   ├── agent-design.md
 │   ├── demo-script.md
 │   ├── mcp-extension-guide.md
-│   ├── assets/screenshots
-│   └── evaluation
+│   ├── multi-tenant-isolation.md
+│   ├── observability/
+│   │   └── slo-and-alerting.md
+│   └── assets/screenshots
+├── helm/tianji-ai-agent/         # Helm Chart
+├── tests/e2e/                    # E2E 冒烟测试
 ├── web/chat-ui
 │   └── 课程业务 Agent 前端原型
-└── 代码
+└── src
     ├── openai-java-demo
     ├── my-spring-ai
     ├── my-spring-ai-mcp
     └── tjxt
+        ├── checkstyle.xml        # 代码规范配置
         └── tj-aigc
 ```
 
@@ -228,16 +233,57 @@ mvn -B -ntp -f src/tjxt/tj-aigc/pom.xml -Pmanual-integration-tests test
 
 ## CI 与质量门槛
 
-仓库把“展示项目必须稳定”的链路设为阻断：
+仓库把”展示项目必须稳定”的链路设为阻断：
 
 - `web/chat-ui`：lint、unit test、build
-- `tj-aigc`：依赖链安装、单元测试
+- `tj-aigc`：依赖链安装、单元测试、JaCoCo 覆盖率报告上传
 - `my-spring-ai`：编译打包
 - Python smoke tests：仓库文档和脚本基础检查
 
-非关键扫描保留为 advisory job，例如 Ruff 建议、通用 compileall、Gitleaks 扫描，避免因为可选工具噪声挡住核心业务链路。
+非关键扫描保留为 advisory job（`continue-on-error: true`），避免噪声挡住核心链路：
+
+| Advisory Job | 工具 | 用途 |
+|---|---|---|
+| Python Quality | Ruff + compileall | Python 代码规范 |
+| Secret Scan | Gitleaks | 硬编码密钥检测 |
+| Java Quality | Checkstyle + SpotBugs | Java 代码规范 + 静态分析 |
+| OWASP Dependency Check | dependency-check-maven | 已知漏洞依赖扫描（CVSS >= 7） |
+| Container Image Scan | Trivy | Dockerfile 文件系统扫描（HIGH/CRITICAL） |
 
 Spring AI 版本兼容说明见 [docs/spring-ai-version-note.md](docs/spring-ai-version-note.md)。
+
+## 安全加固
+
+- **密钥外部化**：所有敏感配置（Keystore、Nacos、数据源）改为环境变量引用，禁止提交明文
+- **限流**：基于 IP 的令牌桶限流（60 req/min），超限返回 HTTP 429
+- **安全响应头**：X-Content-Type-Options、X-Frame-Options、Referrer-Policy、Permissions-Policy
+- **文件上传**：PDF/PNG/JPEG/DOCX 魔数校验，防止扩展名伪造
+
+## 可观测性
+
+- **Spring Boot Actuator**：`/actuator/health`（含 liveness/readiness）、`/actuator/info`
+- **Prometheus 指标**：`/actuator/prometheus`，HTTP 请求延迟百分位直方图
+- **结构化日志**：logstash-logback-encoder，生产环境输出 JSON 格式
+- **SLO 定义与告警规则**：见 [docs/observability/slo-and-alerting.md](docs/observability/slo-and-alerting.md)
+
+## 部署
+
+### Helm Chart
+
+```bash
+helm install tianji-ai-agent helm/tianji-ai-agent/ \
+  --set image.repository=tianji/tj-aigc \
+  --set image.tag=latest \
+  --set env.SPRING_PROFILES_ACTIVE=local
+```
+
+Chart 包含 Deployment、Service 和 liveness/readiness 探针配置。
+
+### Docker Compose
+
+```bash
+docker compose -f docker-compose.dev.yml up --build
+```
 
 ## MCP 扩展
 
