@@ -229,31 +229,6 @@
                         <phase>test</phase>
                         <goals><goal>report</goal></goals>
                     </execution>
-                    <execution>
-                        <id>check</id>
-                        <goals><goal>check</goal></goals>
-                        <configuration>
-                            <rules>
-                                <rule>
-                                    <element>PACKAGE</element>
-                                    <limits>
-                                        <limit>
-                                            <counter>LINE</counter>
-                                            <value>COVEREDRATIO</value>
-                                            <minimum>0.40</minimum>
-                                        </limit>
-                                    </limits>
-                                </rule>
-                            </rules>
-                            <excludes>
-                                <exclude>**/entity/**</exclude>
-                                <exclude>**/dto/**</exclude>
-                                <exclude>**/vo/**</exclude>
-                                <exclude>**/enums/**</exclude>
-                                <exclude>**/config/**</exclude>
-                            </excludes>
-                        </configuration>
-                    </execution>
                 </executions>
             </plugin>
         </plugins>

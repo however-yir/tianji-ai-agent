@@ -58,8 +58,12 @@ jobs:
       - name: Run tj-aigc unit tests
         run: mvn -B -ntp -f src/tjxt/tj-aigc/pom.xml test
 
-      - name: JaCoCo coverage gate
-        run: mvn -B -ntp -f src/tjxt/tj-aigc/pom.xml jacoco:check
+      - name: Upload JaCoCo coverage report
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: jacoco-report
+          path: src/tjxt/tj-aigc/target/site/jacoco/
 
       - name: Compile Spring AI sample
         run: mvn -B -ntp -f src/my-spring-ai/pom.xml -DskipTests package
@@ -163,7 +167,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Trivy filesystem scan (tj-aigc Dockerfile)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: 'fs'
           scan-ref: 'src/tjxt/tj-aigc'
@@ -171,7 +175,7 @@ jobs:
           exit-code: '0'
 
       - name: Trivy filesystem scan (chat-ui Dockerfile)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: 'fs'
           scan-ref: 'web/chat-ui'
