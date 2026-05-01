@@ -13,7 +13,14 @@ spring:
   datasource:
     url: ${AIGC_DATASOURCE_URL:jdbc:mysql://127.0.0.1:3306/tj_aigc?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false}
     username: ${AIGC_DATASOURCE_USERNAME:root}
-    password: ${AIGC_DATASOURCE_PASSWORD:123456}
+    password: ${AIGC_DATASOURCE_PASSWORD:CHANGE_ME}
+    hikari:
+      maximum-pool-size: ${AIGC_HIKARI_MAX_POOL_SIZE:20}
+      minimum-idle: ${AIGC_HIKARI_MIN_IDLE:5}
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      connection-test-query: SELECT 1
   data:
     redis:
       host: ${AIGC_REDIS_HOST:127.0.0.1}
@@ -25,8 +32,8 @@ spring:
       server-addr: ${AIGC_NACOS_ADDR:192.168.150.101:8848} # nacos注册中心
       config:
         enabled: ${AIGC_NACOS_CONFIG_ENABLED:false}
-      username: nacos
-      password: nacos
+      username: ${AIGC_NACOS_USERNAME:nacos}
+      password: ${AIGC_NACOS_PASSWORD:CHANGE_ME}
       discovery:
         enabled: ${AIGC_NACOS_DISCOVERY_ENABLED:false}
         register-enabled: ${AIGC_NACOS_DISCOVERY_REGISTER_ENABLED:false}

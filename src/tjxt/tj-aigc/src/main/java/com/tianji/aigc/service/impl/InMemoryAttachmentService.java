@@ -142,6 +142,31 @@ public class InMemoryAttachmentService implements AttachmentService {
         if (file.getSize() > MAX_FILE_SIZE) {
             throw new IllegalArgumentException("附件超过 8MB，请压缩后再上传。");
         }
+        if (file.getSize() == 0) {
+            throw new IllegalArgumentException("附件为空，请检查后重新上传。");
+        }
+        // 文件魔数校验：防止扩展名伪造
+        try {
+            byte[] header = file.getInputStream().readNBytes(8);
+            String fileName = StrUtil.blankToDefault(file.getOriginalFilename(), "").toLowerCase(Locale.ROOT);
+            if (fileName.endsWith(".pdf") && !(header.length >= 4 && header[0] == 0x25 && header[1] == 0x50
+                    && header[2] == 0x44 && header[3] == 0x46)) {
+                throw new IllegalArgumentException("文件内容与 PDF 扩展名不匹配。");
+            }
+            if (fileName.endsWith(".docx") && !(header.length >= 4 && header[0] == 0x50 && header[1] == 0x4B)) {
+                throw new IllegalArgumentException("文件内容与 DOCX 扩展名不匹配（需要 PK 头）。");
+            }
+            if ((fileName.endsWith(".png")) && !(header.length >= 8 && header[0] == (byte) 0x89
+                    && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47)) {
+                throw new IllegalArgumentException("文件内容与 PNG 扩展名不匹配。");
+            }
+            if ((fileName.endsWith(".jpg") || fileName.endsWith(".jpeg"))
+                    && !(header.length >= 2 && header[0] == (byte) 0xFF && header[1] == (byte) 0xD8)) {
+                throw new IllegalArgumentException("文件内容与 JPEG 扩展名不匹配。");
+            }
+        } catch (IOException e) {
+            throw new IllegalArgumentException("无法读取文件内容。", e);
+        }
     }
 
     private String extractText(MultipartFile file) {

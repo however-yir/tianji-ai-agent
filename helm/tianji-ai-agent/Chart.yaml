@@ -1,0 +1,6 @@
+apiVersion: v2
+name: tianji-ai-agent
+description: Tianji AI Agent - multi-agent platform with Spring AI
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

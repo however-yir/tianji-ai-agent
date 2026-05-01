@@ -10,6 +10,7 @@ import com.tianji.aigc.enums.ChatEventTypeEnum;
 import com.tianji.aigc.service.ChatService;
 import com.tianji.aigc.vo.ChatEventVO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @Profile("!dev-demo")
 public class AgentServiceImpl implements ChatService {
@@ -39,14 +41,18 @@ public class AgentServiceImpl implements ChatService {
 
     @Override
     public Flux<ChatEventVO> chat(String question, String sessionId) {
+        long startTime = System.currentTimeMillis();
         // 先通过意图分析智能体，进行分析
         Agent routeAgent = this.findAgentByType(AgentTypeEnum.ROUTE);
         String result = routeAgent.process(question, sessionId);
         AgentTypeEnum agentTypeEnum = AgentTypeEnum.agentNameOf(result);
+        log.info("[Agent路由] sessionId={}, 目标Agent={}, 耗时={}ms",
+                sessionId, agentTypeEnum, System.currentTimeMillis() - startTime);
 
         //根据枚举类型查询bean
         Agent agent = this.findAgentByType(agentTypeEnum);
         if (null == agent) {
+            log.warn("[Agent路由] 未找到Agent类型={}, 回退到直接回复, sessionId={}", agentTypeEnum, sessionId);
             // 找不到对应的智能体，直接返回结果
             ChatEventVO chatEventVO = ChatEventVO.builder()
                     .eventType(ChatEventTypeEnum.DATA.getValue())

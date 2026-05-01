@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+    <!--
+    Add suppression rules here when a CVE is a false positive for this project.
+    Example:
+    <suppress>
+        <notes>False positive: this CVE applies to a different usage context.</notes>
+        <packageUrl regex="true">^pkg:maven/com\.example/.*@.*$</packageUrl>
+        <cpe>cpe:/a:example:library</cpe>
+    </suppress>
+    -->
+</suppressions>

@@ -1,0 +1,51 @@
+replicaCount: 1
+
+image:
+  repository: tianji/tj-aigc
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8094
+
+env:
+  SPRING_PROFILES_ACTIVE: local
+  SERVER_PORT: "8094"
+
+envSecrets: {}
+  # MYSQL_HOST: mysql-host
+  # REDIS_HOST: redis-host
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8094
+  initialDelaySeconds: 60
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 8094
+  initialDelaySeconds: 30
+  periodSeconds: 5
+
+mysql:
+  enabled: false
+  image: mysql:8.0
+  port: 3306
+  storage: 5Gi
+
+redis:
+  enabled: false
+  image: redis:7.2-alpine
+  port: 6379

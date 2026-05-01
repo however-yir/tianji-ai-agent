@@ -58,6 +58,9 @@ jobs:
       - name: Run tj-aigc unit tests
         run: mvn -B -ntp -f src/tjxt/tj-aigc/pom.xml test
 
+      - name: JaCoCo coverage gate
+        run: mvn -B -ntp -f src/tjxt/tj-aigc/pom.xml jacoco:check
+
       - name: Compile Spring AI sample
         run: mvn -B -ntp -f src/my-spring-ai/pom.xml -DskipTests package
 
@@ -105,3 +108,72 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  advisory-java-quality:
+    name: Advisory Java Quality (Checkstyle + SpotBugs)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Install tj-aigc dependency chain
+        run: mvn -B -ntp -f src/tjxt/pom.xml -pl tj-aigc -am -DskipTests install
+
+      - name: Checkstyle advisory
+        continue-on-error: true
+        run: mvn -B -ntp -f src/tjxt/tj-aigc/pom.xml checkstyle:check
+
+      - name: SpotBugs advisory
+        continue-on-error: true
+        run: mvn -B -ntp -f src/tjxt/tj-aigc/pom.xml spotbugs:check
+
+  advisory-owasp-scan:
+    name: Advisory OWASP Dependency Check
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: OWASP dependency check advisory
+        continue-on-error: true
+        run: mvn -B -ntp -f src/tjxt/tj-aigc/pom.xml org.owasp:dependency-check-maven:check
+
+  advisory-image-scan:
+    name: Advisory Container Image Scan
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Trivy filesystem scan (tj-aigc Dockerfile)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'fs'
+          scan-ref: 'src/tjxt/tj-aigc'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '0'
+
+      - name: Trivy filesystem scan (chat-ui Dockerfile)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'fs'
+          scan-ref: 'web/chat-ui'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '0'

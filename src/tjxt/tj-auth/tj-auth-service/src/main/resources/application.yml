@@ -9,10 +9,10 @@ spring:
     name: auth-service
 encrypt:
   key-store:
-    alias: tjxt  #别名
+    alias: ${TJ_KEYSTORE_ALIAS:tjxt}  #别名
     location: classpath:tjxt.jks  #KeyStore 证书库名称
-    password: tj123321   #证书库密码
-    secret: tj123321   #秘钥
+    password: ${TJ_KEYSTORE_PASSWORD:CHANGE_ME}   #证书库密码 (外部化，禁止提交明文)
+    secret: ${TJ_KEYSTORE_SECRET:CHANGE_ME}   #秘钥 (外部化，禁止提交明文)
 tj:
   swagger:
     enable: true
