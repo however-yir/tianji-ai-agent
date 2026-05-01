@@ -11,7 +11,7 @@ services:
 
   backend:
     build:
-      context: ./代码/tjxt
+      context: ./src/tjxt
       dockerfile: tj-aigc/Dockerfile
     container_name: tianji-aigc
     depends_on:

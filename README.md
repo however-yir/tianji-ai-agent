@@ -113,11 +113,11 @@ sequenceDiagram
 | 模块 | 角色 | 展示价值 |
 |---|---|---|
 | `web/chat-ui` | React 聊天前端 | 会话、SSE、停止生成、附件、语音入口、课程/订单卡片 |
-| `代码/tjxt/tj-aigc` | 业务 Agent 核心 | RouteAgent、子 Agent、Tool Calling、Redis 记忆、附件服务 |
-| `代码/tjxt/tj-api` | 业务微服务契约 | CourseClient、TradeClient 等 Feign 接口 |
-| `代码/openai-java-demo` | SDK 入门样例 | 保留教学路径，用课程推荐助手解释基础调用 |
-| `代码/my-spring-ai` | Spring AI 能力样例 | ChatClient、Advisor、Tool、RAG、多模态基础能力 |
-| `代码/my-spring-ai-mcp` | MCP 扩展示例 | 把工具封装为可复用 MCP Server/Client |
+| `src/tjxt/tj-aigc` | 业务 Agent 核心 | RouteAgent、子 Agent、Tool Calling、Redis 记忆、附件服务 |
+| `src/tjxt/tj-api` | 业务微服务契约 | CourseClient、TradeClient 等 Feign 接口 |
+| `src/openai-java-demo` | SDK 入门样例 | 保留教学路径，用课程推荐助手解释基础调用 |
+| `src/my-spring-ai` | Spring AI 能力样例 | ChatClient、Advisor、Tool、RAG、多模态基础能力 |
+| `src/my-spring-ai-mcp` | MCP 扩展示例 | 把工具封装为可复用 MCP Server/Client |
 
 ## Demo 闭环
 
@@ -216,14 +216,14 @@ npm run build
 后端核心链路：
 
 ```bash
-mvn -B -ntp -f 代码/tjxt/pom.xml -pl tj-aigc -am -DskipTests package
-mvn -B -ntp -f 代码/tjxt/tj-aigc/pom.xml test
+mvn -B -ntp -f src/tjxt/pom.xml -pl tj-aigc -am -DskipTests package
+mvn -B -ntp -f src/tjxt/tj-aigc/pom.xml test
 ```
 
 手工集成测试依赖真实模型、Nacos、业务中间件和密钥，默认通过 JUnit Tag 排除：
 
 ```bash
-mvn -B -ntp -f 代码/tjxt/tj-aigc/pom.xml -Pmanual-integration-tests test
+mvn -B -ntp -f src/tjxt/tj-aigc/pom.xml -Pmanual-integration-tests test
 ```
 
 ## CI 与质量门槛

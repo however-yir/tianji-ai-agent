@@ -4,7 +4,7 @@
 This document clarifies which content is required in the main repository and which content should be managed as external assets.
 
 ## Required in main repository
-- `代码/`
+- `src/`
 - `README.md`
 - `LICENSE`
 - `.github/workflows/`

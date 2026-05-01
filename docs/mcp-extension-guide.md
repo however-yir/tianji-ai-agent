@@ -21,9 +21,9 @@ MCP 在本项目中是扩展位，不是主叙事。课程业务闭环优先由 
 
 | 模块 | 作用 |
 |---|---|
-| `代码/my-spring-ai-mcp/my-spring-ai-mcp-server` | MCP Server 示例，暴露工具能力 |
-| `代码/my-spring-ai-mcp/my-spring-ai-mcp-client` | MCP Client 示例，演示模型通过 MCP 调工具 |
-| `代码/tjxt/tj-aigc/tools` | 当前课程业务 Agent 的内部工具 |
+| `src/my-spring-ai-mcp/my-spring-ai-mcp-server` | MCP Server 示例，暴露工具能力 |
+| `src/my-spring-ai-mcp/my-spring-ai-mcp-client` | MCP Client 示例，演示模型通过 MCP 调工具 |
+| `src/tjxt/tj-aigc/tools` | 当前课程业务 Agent 的内部工具 |
 
 ## 从内部 Tool 迁移到 MCP
 

@@ -4,8 +4,8 @@
 
 ## Current Rule
 
-- Keep `代码/tjxt/tj-aigc` stable first, because it is the business Agent showcase path.
-- Treat `代码/openai-java-demo`, `代码/my-spring-ai`, and `代码/my-spring-ai-mcp` as supporting learning/sample modules.
+- Keep `src/tjxt/tj-aigc` stable first, because it is the business Agent showcase path.
+- Treat `src/openai-java-demo`, `src/my-spring-ai`, and `src/my-spring-ai-mcp` as supporting learning/sample modules.
 - Upgrade Spring AI through a planned compatibility pass instead of a casual dependency bump.
 
 ## Upgrade Checklist

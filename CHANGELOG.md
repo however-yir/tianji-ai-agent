@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.0.0-business-agent-showcase - 2026-04-29
+## v0.1.0-business-agent-showcase - 2026-04-29
 
 这是 `tianji-ai-agent` 从“AI 能力学习合集”重塑为“课程业务 Agent 工程案例”的展示版。
 
@@ -30,6 +30,6 @@
 - `npm run lint`
 - `npm run test:run`
 - `npm run build`
-- `mvn -B -ntp -f 代码/openai-java-demo/pom.xml -DskipTests package`
+- `mvn -B -ntp -f src/openai-java-demo/pom.xml -DskipTests package`
 
 `tj-aigc` Maven 验证当前受本机 Maven Central 连接超时影响，详见本次工作总结。

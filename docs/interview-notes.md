@@ -27,7 +27,7 @@ The strongest story is the split between `RouteAgent` and the domain agents. `Ro
 ```bash
 bash scripts/quick-start-mac.sh
 cd web/chat-ui && npm ci && npm run lint && npm run test:run && npm run build
-cd ../../代码/tjxt/tj-aigc && mvn test
+cd ../../src/tjxt/tj-aigc && mvn test
 ```
 
 ## Follow-Up Ideas
