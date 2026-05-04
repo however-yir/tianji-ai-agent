@@ -1096,3 +1096,153 @@ button {
     width: 100%;
   }
 }
+
+/* ── Route Result Card ──────────────────────────────── */
+.route-card {
+  margin: 0.5rem 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+  border: 1px solid #c7d2fe;
+  font-size: 0.85rem;
+}
+.route-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.route-badge {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  background: #6366f1;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.route-confidence {
+  margin-left: auto;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  background: #10b981;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+.route-detail {
+  margin-top: 0.3rem;
+  color: #4f46e5;
+  font-weight: 500;
+}
+.route-reason {
+  margin-top: 0.2rem;
+  color: #6b7280;
+  font-size: 0.8rem;
+}
+.route-tags {
+  margin-top: 0.4rem;
+  display: flex;
+  gap: 0.3rem;
+}
+.route-tag {
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  background: #dbeafe;
+  color: #1e40af;
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+.route-tag.risk-low { background: #d1fae5; color: #065f46; }
+.route-tag.risk-medium { background: #fef3c7; color: #92400e; }
+.route-tag.risk-high { background: #fee2e2; color: #991b1b; }
+
+/* ── Evidence Section ────────────────────────────────── */
+.evidence-section {
+  margin: 0.4rem 0;
+}
+.evidence-head {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 0.3rem;
+}
+.evidence-chip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  margin-bottom: 0.25rem;
+  border-radius: 6px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  font-size: 0.78rem;
+}
+.evidence-source {
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+  background: #ede9fe;
+  color: #7c3aed;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.evidence-title {
+  font-weight: 500;
+  color: #374151;
+}
+.evidence-score {
+  margin-left: auto;
+  padding: 0.05rem 0.35rem;
+  border-radius: 3px;
+  background: #d1fae5;
+  color: #065f46;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+.evidence-reason {
+  width: 100%;
+  color: #9ca3af;
+  font-size: 0.7rem;
+  margin-top: 0.1rem;
+}
+
+/* ── Memory Hits ─────────────────────────────────────── */
+.memory-section {
+  margin: 0.4rem 0;
+}
+.memory-head {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 0.3rem;
+}
+.memory-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.5rem;
+  margin-bottom: 0.2rem;
+  border-radius: 6px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  font-size: 0.78rem;
+}
+.memory-type {
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.memory-text {
+  color: #78350f;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+}

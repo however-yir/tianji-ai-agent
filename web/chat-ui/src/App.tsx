@@ -123,6 +123,30 @@ type OrderCardData = {
   couponName?: string;
 };
 
+type RouteResult = {
+  intent?: string;
+  confidence?: number;
+  reason?: string;
+  nextAgent?: string;
+  needRag?: boolean;
+  needMemory?: boolean;
+  riskLevel?: string;
+};
+
+type EvidenceCard = {
+  sourceType?: string;
+  title?: string;
+  score?: number;
+  reason?: string;
+  snippet?: string;
+};
+
+type MemoryHit = {
+  type?: string;
+  content?: string;
+  source?: string;
+};
+
 type ChatMessage = {
   id: string;
   role: MessageRole;
@@ -132,6 +156,9 @@ type ChatMessage = {
   params?: Record<string, unknown> | null;
   references?: ReferenceCard[];
   toolSummary?: ToolSummaryItem[];
+  routeResult?: RouteResult | null;
+  evidence?: EvidenceCard[];
+  memoryHits?: MemoryHit[];
   originQuestion?: string;
   attachments?: AttachmentItem[];
   attachmentIds?: string[];
@@ -1643,6 +1670,35 @@ export default function App() {
             });
             return;
           }
+          if (event.eventType === 1004) {
+            const route = (event.eventData && typeof event.eventData === "object"
+              ? event.eventData
+              : { intent: String(event.eventData ?? "") }) as RouteResult;
+            setAssistantState(sessionId, messageId, { routeResult: route });
+            return;
+          }
+          if (event.eventType === 1006) {
+            const evidenceList = (event.eventData && typeof event.eventData === "object"
+              ? [event.eventData as EvidenceCard]
+              : []) as EvidenceCard[];
+            if (evidenceList.length > 0) {
+              setAssistantState(sessionId, messageId, (prev) => ({
+                evidence: [...(prev.evidence ?? []), ...evidenceList],
+              }));
+            }
+            return;
+          }
+          if (event.eventType === 1007) {
+            const hits = (event.eventData && typeof event.eventData === "object"
+              ? [event.eventData as MemoryHit]
+              : []) as MemoryHit[];
+            if (hits.length > 0) {
+              setAssistantState(sessionId, messageId, (prev) => ({
+                memoryHits: [...(prev.memoryHits ?? []), ...hits],
+              }));
+            }
+            return;
+          }
           if (event.eventType === 1002) {
             setAssistantState(sessionId, messageId, {
               status: "done",
@@ -2136,6 +2192,66 @@ export default function App() {
                       <div className="plain-text">{message.content}</div>
                     )}
                   </div>
+
+                  {/* Route Result Card */}
+                  {message.routeResult ? (
+                    <div className="route-card">
+                      <div className="route-head">
+                        <span className="route-badge">路由</span>
+                        <strong>{message.routeResult.intent ?? message.routeResult.nextAgent ?? "UNKNOWN"}</strong>
+                        {message.routeResult.confidence != null ? (
+                          <span className="route-confidence">
+                            {(message.routeResult.confidence * 100).toFixed(0)}%
+                          </span>
+                        ) : null}
+                      </div>
+                      {message.routeResult.nextAgent ? (
+                        <div className="route-detail">→ {message.routeResult.nextAgent}</div>
+                      ) : null}
+                      {message.routeResult.reason ? (
+                        <div className="route-reason">{message.routeResult.reason}</div>
+                      ) : null}
+                      <div className="route-tags">
+                        {message.routeResult.needRag ? <span className="route-tag">RAG</span> : null}
+                        {message.routeResult.needMemory ? <span className="route-tag">记忆</span> : null}
+                        {message.routeResult.riskLevel ? (
+                          <span className={`route-tag risk-${(message.routeResult.riskLevel ?? "").toLowerCase()}`}>
+                            {message.routeResult.riskLevel}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {/* Evidence Items */}
+                  {message.evidence?.length ? (
+                    <div className="evidence-section">
+                      <div className="evidence-head">证据溯源</div>
+                      {message.evidence.map((ev, i) => (
+                        <div className="evidence-chip" key={`ev-${message.id}-${i}`}>
+                          <span className="evidence-source">{ev.sourceType}</span>
+                          <span className="evidence-title">{ev.title}</span>
+                          {ev.score != null ? (
+                            <span className="evidence-score">{(ev.score * 100).toFixed(0)}%</span>
+                          ) : null}
+                          {ev.reason ? <span className="evidence-reason">{ev.reason}</span> : null}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {/* Memory Hits */}
+                  {message.memoryHits?.length ? (
+                    <div className="memory-section">
+                      <div className="memory-head">记忆命中</div>
+                      {message.memoryHits.map((mh, i) => (
+                        <div className="memory-chip" key={`mem-${message.id}-${i}`}>
+                          <span className="memory-type">{mh.type ?? "short"}</span>
+                          <span className="memory-text">{mh.content}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
 
                   {message.attachments?.length ? (
                     <div className="attachment-list">
