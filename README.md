@@ -1,6 +1,6 @@
-# tianji-ai-agent
+# tianji-ai-agent · 天机学堂智能客服系统
 
-> **Learning & showcase project** — demonstrating multi-agent routing, Tool Calling, and SSE streaming patterns with a real course-business scenario. For production-grade deployment with enterprise governance (JWT/RBAC, observability, async ingestion), see **[knowledgeops-agent](https://github.com/however-yir/knowledgeops-agent)**.
+> **CloudAgent Intelligent Customer Service** — 基于 Spring AI 的多智能体课程客服系统。通过 RouteAgent 意图识别 + 9 种子 Agent 协作 + Tool Calling + SSE 全链路事件流，实现从课程推荐、售前咨询、预下单到售后投诉、转人工的完整业务闭环。
 
 课程业务 Agent 工程案例：用户提问 -> RouteAgent 意图识别 -> Recommend/Buy/Consult/Knowledge 子 Agent -> Tool Calling -> SSE 流式返回 -> 前端卡片展示。
 
@@ -14,7 +14,7 @@
 
 ## 矩阵角色
 
-`tianji-ai-agent` 是 however-yir AI 工程作品矩阵中的 **”CloudAgent 智能客服/课程顾问应用”**，作为 **KnowledgeOps Agent（多Agent企业AI平台）** 的业务落地案例。通过 `KnowledgeOpsClient` 调用平台 RAG/记忆/图谱能力，展示课程推荐、售前咨询、预下单、售后客服、投诉处理、转人工和 SSE 全链路事件回放。完整项目矩阵见 [docs/project-matrix.md](docs/project-matrix.md)，面试讲解提纲见 [docs/interview-notes.md](docs/interview-notes.md)。
+`tianji-ai-agent` 是 however-yir AI 工程作品矩阵中的 **”CloudAgent 智能客服/课程顾问应用”**，作为 **KnowledgeOps Agent（多Agent企业AI平台）** 的业务落地案例。通过 `KnowledgeOpsClient` 调用平台 RAG/记忆/图谱能力，展示课程推荐、售前咨询、预下单、售后客服、投诉处理、转人工和 SSE 全链路事件回放。完整项目矩阵见 [docs/project-matrix.md](docs/project-matrix.md)。
 
 ## 业务闭环
 
@@ -295,14 +295,14 @@ MCP 不是本项目的主叙事，但保留为“后续把课程、交易、搜�
 
 扩展指南见 [docs/mcp-extension-guide.md](docs/mcp-extension-guide.md)。
 
-## 展示路线
+## 演示路径
 
-适合面试、简历和 GitHub 项目页的讲法：
-
-1. 先讲业务问题：课程咨询转化链路需要智能体理解意图并调用业务工具。
-2. 再讲架构：RouteAgent 做分发，子 Agent 负责推荐、购买、咨询、知识问答。
-3. 再讲工程细节：SSE 流式事件、ToolResultHolder 参数回传、RedisChatMemory、停止生成、附件引用。
-4. 最后现场演示：输入购课问题，观察工具调用参数回传，前端展示课程/订单卡片。
+1. 打开 Chat UI，输入"我零基础，想 3 个月入门 Java 后端，帮我推荐课程"
+2. 观察 RouteAgent 意图识别 → RecommendAgent → CourseTools 查询 → SSE 课程卡片返回
+3. 输入"我要购买课程 1589905661084430337，帮我生成确认订单"
+4. 观察 RouteAgent → BuyAgent → OrderTools 预下单 → SSE 订单确认卡片
+5. 输入"Java 中 Redis 缓存穿透是什么"
+6. 观察 RouteAgent → KnowledgeAgent → SSE 流式知识回答
 
 录屏建议：
 
