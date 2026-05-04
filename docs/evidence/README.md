@@ -6,6 +6,7 @@ This pack collects the shortest public proof path for reviewing the business Age
 
 - Local proof path: `bash scripts/quick-start-mac.sh`
 - Main CI: `.github/workflows/ci.yml`
+- Baseline release: `AI Matrix Baseline 2026.05`
 - Release: `v0.1.0 - Course Agent Showcase`
 - Frontend app: `web/chat-ui`
 - Backend Agent module: `代码/tjxt/tj-aigc`
@@ -28,4 +29,3 @@ This pack collects the shortest public proof path for reviewing the business Age
 - Send a pre-order prompt and confirm `PARAM` includes the order card data.
 - Check memory behavior across multiple turns in the same session.
 - Open the latest GitHub Actions run and confirm the CI workflow is green.
-
