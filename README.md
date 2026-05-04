@@ -140,6 +140,8 @@ sequenceDiagram
 | 知识问答 | `Java 中 Redis 缓存穿透是什么，怎么处理` | `RouteAgent -> KnowledgeAgent` | 流式知识回答 |
 | 语音/多模态入口 | `上传一张课程截图，或用语音问“这门课适合我吗”` | `/attachment/upload`、`/audio/stt`、`/audio/tts-stream`、`/chat` | 附件引用、语音输入、流式回复 |
 
+证据索引见 [docs/evidence/README.md](docs/evidence/README.md)，包含运行路径、截图、Agent 设计文档、CI 和发布信息。
+
 ## 后端核心
 
 `tj-aigc` 的接口以业务闭环为中心，而不是为了罗列框架能力：
