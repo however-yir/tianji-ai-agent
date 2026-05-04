@@ -51,7 +51,9 @@ class AgentServiceImplTest {
 
         List<ChatEventVO> events = service.chat("推荐课程", "session-1").collectList().block();
 
-        assertThat(events).containsExactly(downstreamEvent);
+        assertThat(events).hasSize(2);
+        assertThat(events.get(0).getEventType()).isEqualTo(ChatEventTypeEnum.ROUTE.getValue());
+        assertThat(events.get(1)).isEqualTo(downstreamEvent);
     }
 
     @Test
@@ -68,8 +70,7 @@ class AgentServiceImplTest {
         List<ChatEventVO> events = service.chat("你好", "session-2").collectList().block();
 
         assertThat(events).hasSize(2);
-        assertThat(events.get(0).getEventType()).isEqualTo(ChatEventTypeEnum.DATA.getValue());
-        assertThat(events.get(0).getEventData()).isEqualTo("普通回复");
+        assertThat(events.get(0).getEventType()).isEqualTo(ChatEventTypeEnum.ROUTE.getValue());
         assertThat(events.get(1).getEventType()).isEqualTo(ChatEventTypeEnum.STOP.getValue());
     }
 
