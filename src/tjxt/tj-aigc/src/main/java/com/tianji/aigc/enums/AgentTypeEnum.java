@@ -12,7 +12,11 @@ public enum AgentTypeEnum {
     RECOMMEND("RECOMMEND", "课程推荐智能体"),
     CONSULT("CONSULT", "课程咨询智能体"),
     BUY("BUY", "课程购买智能体"),
-    KNOWLEDGE("KNOWLEDGE", "知识讲解智能体");
+    KNOWLEDGE("KNOWLEDGE", "知识讲解智能体"),
+    AFTER_SALE("AFTER_SALE", "售后客服智能体"),
+    COMPLAINT("COMPLAINT", "投诉处理智能体"),
+    STUDY_PLAN("STUDY_PLAN", "学习规划智能体"),
+    HUMAN_HANDOFF("HUMAN_HANDOFF", "转人工智能体");
 
     private final String agentName;
     private final String desc;

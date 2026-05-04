@@ -14,7 +14,7 @@
 
 ## 矩阵角色
 
-`tianji-ai-agent` 是 however-yir AI 工程作品矩阵中的“业务 Agent 工程案例（学习/展示用途）”，负责展示课程推荐、课程咨询、预下单、多智能体路由、Tool Calling 和 SSE 卡片返回这一条业务闭环。完整项目矩阵见 [docs/project-matrix.md](docs/project-matrix.md)，面试讲解提纲见 [docs/interview-notes.md](docs/interview-notes.md)。
+`tianji-ai-agent` 是 however-yir AI 工程作品矩阵中的 **”CloudAgent 智能客服/课程顾问应用”**，作为 **KnowledgeOps Agent（多Agent企业AI平台）** 的业务落地案例。通过 `KnowledgeOpsClient` 调用平台 RAG/记忆/图谱能力，展示课程推荐、售前咨询、预下单、售后客服、投诉处理、转人工和 SSE 全链路事件回放。完整项目矩阵见 [docs/project-matrix.md](docs/project-matrix.md)，面试讲解提纲见 [docs/interview-notes.md](docs/interview-notes.md)。
 
 ## 业务闭环
 
@@ -24,10 +24,14 @@
 
 1. 用户在聊天前端输入课程咨询、推荐或购买问题。
 2. `tj-aigc` 接收 `/chat` 请求，建立会话上下文和附件上下文。
-3. `RouteAgent` 判断意图，路由到 `RecommendAgent`、`BuyAgent`、`ConsultAgent` 或 `KnowledgeAgent`。
-4. 子 Agent 通过 `CourseTools`、`OrderTools` 调用课程和交易微服务。
+3. `RouteAgent` 判断意图（结构化 JSON：intent/confidence/nextAgent/needRag/needMemory/riskLevel），路由到 9 种子 Agent。
+4. 子 Agent 通过 `CourseTools`、`OrderTools` 调用课程和交易微服务，通过 `KnowledgeOpsClient` 调用平台 RAG/记忆/图谱。
 5. `ToolResultHolder` 把工具结果转成 `PARAM` 事件，和模型文本一起通过 SSE 返回。
-6. 前端消费 `DATA / PARAM / STOP` 事件，渲染课程卡片、订单卡片、引用来源和停止生成状态。
+6. 前端消费 `ROUTE / DATA / TRACE / EVIDENCE / MEMORY / PARAM / STOP` 事件，渲染路由链路、课程卡片、订单卡片、引用来源、记忆命中和停止生成状态。
+
+**可用 Agent 类型：** `ROUTE` | `RECOMMEND` | `CONSULT` | `BUY` | `KNOWLEDGE` | `AFTER_SALE` | `COMPLAINT` | `STUDY_PLAN` | `HUMAN_HANDOFF`
+
+**SSE 事件类型：** `DATA(1001)` | `STOP(1002)` | `PARAM(1003)` | `ROUTE(1004)` | `TRACE(1005)` | `EVIDENCE(1006)` | `MEMORY(1007)`
 
 ## 一眼看懂
 
