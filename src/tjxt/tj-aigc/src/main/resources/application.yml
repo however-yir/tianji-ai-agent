@@ -100,3 +100,9 @@ tj:
           data-id: knowledge-agent-system-message.txt
         text:
           data-id: text-system-chat-message.txt
+    knowledgeops:
+      enabled: ${TJ_AI_KNOWLEDGEOPS_ENABLED:false}
+      base-url: ${TJ_AI_KNOWLEDGEOPS_BASE_URL:http://localhost:8080}
+      api-key: ${TJ_AI_KNOWLEDGEOPS_API_KEY:}
+      connect-timeout-ms: ${TJ_AI_KNOWLEDGEOPS_CONNECT_TIMEOUT_MS:5000}
+      read-timeout-ms: ${TJ_AI_KNOWLEDGEOPS_READ_TIMEOUT_MS:30000}

@@ -1,6 +1,6 @@
 # Demo Script
 
-这份脚本用于面试、简历讲解、GitHub 项目展示和录屏。目标是把 `tianji-ai-agent` 讲成“课程业务 Agent”，而不是泛泛介绍 Spring AI、MCP 或多模态名词。
+这份脚本用于项目展示、技术评审和本地复现、GitHub 项目展示和录屏。目标是把 `tianji-ai-agent` 讲成“课程业务 Agent”，而不是泛泛介绍 Spring AI、MCP 或多模态名词。
 
 ## 演示目标
 

@@ -3,6 +3,8 @@ package com.tianji.aigc.agent;
 import com.tianji.aigc.config.SystemPromptConfig;
 import com.tianji.aigc.constants.Constant;
 import com.tianji.aigc.enums.AgentTypeEnum;
+import com.tianji.aigc.knowledgeops.KnowledgeOpsClient;
+import com.tianji.aigc.knowledgeops.KnowledgeOpsProperties;
 import com.tianji.aigc.tools.CourseTools;
 import com.tianji.aigc.tools.OrderTools;
 import com.tianji.common.utils.UserContext;
@@ -29,6 +31,10 @@ class AgentConfigurationTest {
     private OrderTools orderTools;
     @Mock
     private VectorStore vectorStore;
+    @Mock
+    private KnowledgeOpsClient knowledgeOpsClient;
+    @Mock
+    private KnowledgeOpsProperties knowledgeOpsProperties;
 
     @AfterEach
     void tearDown() {
@@ -50,9 +56,10 @@ class AgentConfigurationTest {
     @Test
     void shouldExposeRecommendAgentToolsAndContext() {
         when(systemPromptConfig.getRecommendAgentSystemMessage()).thenReturn(new AtomicReference<>("recommend prompt"));
+        when(knowledgeOpsProperties.isEnabled()).thenReturn(false);
         UserContext.setUser(10001L);
 
-        RecommendAgent recommendAgent = new RecommendAgent(systemPromptConfig, courseTools, vectorStore);
+        RecommendAgent recommendAgent = new RecommendAgent(systemPromptConfig, courseTools, vectorStore, knowledgeOpsClient, knowledgeOpsProperties);
 
         assertThat(recommendAgent.getAgentType()).isEqualTo(AgentTypeEnum.RECOMMEND);
         assertThat(recommendAgent.systemMessage()).isEqualTo("recommend prompt");
@@ -97,10 +104,12 @@ class AgentConfigurationTest {
     @Test
     void shouldConfigureKnowledgeAgent() {
         when(systemPromptConfig.getKnowledgeAgentSystemMessage()).thenReturn(new AtomicReference<>("knowledge prompt"));
+        when(knowledgeOpsProperties.isEnabled()).thenReturn(false);
 
-        KnowledgeAgent knowledgeAgent = new KnowledgeAgent(systemPromptConfig);
+        KnowledgeAgent knowledgeAgent = new KnowledgeAgent(systemPromptConfig, knowledgeOpsClient, knowledgeOpsProperties, vectorStore);
 
         assertThat(knowledgeAgent.getAgentType()).isEqualTo(AgentTypeEnum.KNOWLEDGE);
         assertThat(knowledgeAgent.systemMessage()).isEqualTo("knowledge prompt");
+        assertThat(knowledgeAgent.advisors("test question")).hasSize(1);
     }
 }
