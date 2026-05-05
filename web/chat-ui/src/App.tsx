@@ -2195,27 +2195,34 @@ export default function App() {
 
                   {/* Route Result Card */}
                   {message.routeResult ? (
-                    <div className="route-card">
-                      <div className="route-head">
-                        <span className="route-badge">路由</span>
-                        <strong>{message.routeResult.intent ?? message.routeResult.nextAgent ?? "UNKNOWN"}</strong>
-                        {message.routeResult.confidence != null ? (
-                          <span className="route-confidence">
-                            {(message.routeResult.confidence * 100).toFixed(0)}%
-                          </span>
-                        ) : null}
+                    <div className="route-card-v2">
+                      <div className="route-stepper">
+                        <div className="route-step active">
+                          <div className="step-dot"></div>
+                          <span>用户输入</span>
+                        </div>
+                        <div className="route-line"></div>
+                        <div className="route-step active">
+                          <div className="step-dot"></div>
+                          <span>RouteAgent</span>
+                        </div>
+                        <div className="route-line"></div>
+                        <div className="route-step active target">
+                          <div className="step-dot"></div>
+                          <span>{message.routeResult.nextAgent ?? message.routeResult.intent ?? "UNKNOWN"}</span>
+                        </div>
                       </div>
-                      {message.routeResult.nextAgent ? (
-                        <div className="route-detail">→ {message.routeResult.nextAgent}</div>
-                      ) : null}
-                      {message.routeResult.reason ? (
-                        <div className="route-reason">{message.routeResult.reason}</div>
-                      ) : null}
-                      <div className="route-tags">
-                        {message.routeResult.needRag ? <span className="route-tag">RAG</span> : null}
-                        {message.routeResult.needMemory ? <span className="route-tag">记忆</span> : null}
+                      <div className="route-meta-row">
+                        {message.routeResult.confidence != null ? (
+                          <span className="route-conf-badge">{(message.routeResult.confidence * 100).toFixed(0)}%</span>
+                        ) : null}
+                        {message.routeResult.reason ? <span className="route-reason-text">{message.routeResult.reason}</span> : null}
+                      </div>
+                      <div className="route-tag-row">
+                        {message.routeResult.needRag ? <span className="ev-tag rag">RAG</span> : null}
+                        {message.routeResult.needMemory ? <span className="ev-tag memory">记忆</span> : null}
                         {message.routeResult.riskLevel ? (
-                          <span className={`route-tag risk-${(message.routeResult.riskLevel ?? "").toLowerCase()}`}>
+                          <span className={`ev-tag risk-${(message.routeResult.riskLevel ?? "").toLowerCase()}`}>
                             {message.routeResult.riskLevel}
                           </span>
                         ) : null}
@@ -2225,31 +2232,50 @@ export default function App() {
 
                   {/* Evidence Items */}
                   {message.evidence?.length ? (
-                    <div className="evidence-section">
-                      <div className="evidence-head">证据溯源</div>
-                      {message.evidence.map((ev, i) => (
-                        <div className="evidence-chip" key={`ev-${message.id}-${i}`}>
-                          <span className="evidence-source">{ev.sourceType}</span>
-                          <span className="evidence-title">{ev.title}</span>
-                          {ev.score != null ? (
-                            <span className="evidence-score">{(ev.score * 100).toFixed(0)}%</span>
-                          ) : null}
-                          {ev.reason ? <span className="evidence-reason">{ev.reason}</span> : null}
+                    <div className="evidence-section-v2">
+                      <details open>
+                        <summary className="evidence-toggle">
+                          <span className="ev-tag evidence">📋 证据溯源</span>
+                          <span className="evidence-count">{message.evidence.length} 条</span>
+                        </summary>
+                        <div className="evidence-list-v2">
+                          {message.evidence.map((ev, i) => (
+                            <div className="evidence-item-v2" key={`ev-${message.id}-${i}`}>
+                              <div className="evidence-source-bar">
+                                <span className={`source-type-label ${ev.sourceType ?? ""}`}>{ev.sourceType ?? "?"}</span>
+                                {ev.score != null ? (
+                                  <span className="evidence-score-bar">
+                                    <span className="score-fill" style={{ width: `${ev.score * 100}%` }}></span>
+                                    <span className="score-text">{(ev.score * 100).toFixed(0)}%</span>
+                                  </span>
+                                ) : null}
+                              </div>
+                              {ev.title ? <div className="evidence-title-row">{ev.title}</div> : null}
+                              {ev.reason ? <div className="evidence-reason-row">{ev.reason}</div> : null}
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      </details>
                     </div>
                   ) : null}
 
                   {/* Memory Hits */}
                   {message.memoryHits?.length ? (
-                    <div className="memory-section">
-                      <div className="memory-head">记忆命中</div>
-                      {message.memoryHits.map((mh, i) => (
-                        <div className="memory-chip" key={`mem-${message.id}-${i}`}>
-                          <span className="memory-type">{mh.type ?? "short"}</span>
-                          <span className="memory-text">{mh.content}</span>
+                    <div className="memory-section-v2">
+                      <details>
+                        <summary className="memory-toggle">
+                          <span className="ev-tag memory">🧠 记忆命中</span>
+                          <span className="memory-count">{message.memoryHits.length} 条</span>
+                        </summary>
+                        <div className="memory-list-v2">
+                          {message.memoryHits.map((mh, i) => (
+                            <div className="memory-item-v2" key={`mem-${message.id}-${i}`}>
+                              <span className="memory-type-label">{mh.type ?? "short"}</span>
+                              <span className="memory-content-text">{mh.content}</span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      </details>
                     </div>
                   ) : null}
 
@@ -2269,29 +2295,31 @@ export default function App() {
                         const course = extractCourseCard(message.params)!;
                         return (
                           <>
-                            <div className="business-card-head">
-                              <span>课程卡片</span>
-                              <strong>{course.name}</strong>
+                            <div className="business-card-head course-gradient">
+                              <div className="card-head-left">
+                                <span className="card-type-badge">📚 课程</span>
+                                <strong>{course.name}</strong>
+                              </div>
+                              <div className="card-price-tag">{formatMoney(course.price)}</div>
                             </div>
                             <div className="business-card-grid">
-                              <div>
-                                <span>课程 ID</span>
-                                <strong>{course.id}</strong>
-                              </div>
-                              <div>
-                                <span>价格</span>
-                                <strong>{formatMoney(course.price)}</strong>
-                              </div>
-                              <div>
+                              <div className="card-field">
                                 <span>适用人群</span>
                                 <strong>{course.usePeople}</strong>
                               </div>
-                              <div>
+                              <div className="card-field">
                                 <span>有效期</span>
-                                <strong>{course.validDuration ? `${course.validDuration} 个月` : "长期可学"}</strong>
+                                <strong>{course.validDuration ? `${course.validDuration} 月` : "长期"}</strong>
+                              </div>
+                              <div className="card-field">
+                                <span>课程 ID</span>
+                                <strong className="mono">{course.id}</strong>
+                              </div>
+                              <div className="card-field cta-field">
+                                <button className="card-cta-btn" type="button">了解详情 →</button>
                               </div>
                             </div>
-                            {course.detail ? <p>{course.detail}</p> : null}
+                            {course.detail ? <p className="card-detail">{course.detail}</p> : null}
                           </>
                         );
                       })()}
@@ -2304,29 +2332,32 @@ export default function App() {
                         const order = extractOrderCard(message.params)!;
                         return (
                           <>
-                            <div className="business-card-head">
-                              <span>订单确认</span>
-                              <strong>订单号 {order.orderId}</strong>
+                            <div className="business-card-head order-gradient">
+                              <div className="card-head-left">
+                                <span className="card-type-badge">🧾 订单</span>
+                                <strong>订单号 {order.orderId}</strong>
+                              </div>
+                              <div className="card-price-tag accent">{formatMoney(order.payAmount)}</div>
                             </div>
                             <div className="business-card-grid">
-                              <div>
-                                <span>课程数量</span>
+                              <div className="card-field">
+                                <span>课程数</span>
                                 <strong>{order.count}</strong>
                               </div>
-                              <div>
-                                <span>金额</span>
+                              <div className="card-field">
+                                <span>原价</span>
                                 <strong>{formatMoney(order.totalAmount)}</strong>
                               </div>
-                              <div>
+                              <div className="card-field">
                                 <span>优惠</span>
-                                <strong>{formatMoney(order.discountAmount)}</strong>
+                                <strong className="discount">-{formatMoney(order.discountAmount)}</strong>
                               </div>
-                              <div>
+                              <div className="card-field">
                                 <span>实付</span>
-                                <strong>{formatMoney(order.payAmount)}</strong>
+                                <strong className="pay-amount">{formatMoney(order.payAmount)}</strong>
                               </div>
                             </div>
-                            {order.couponName ? <p>{order.couponName}</p> : null}
+                            {order.couponName ? <p className="card-detail">🎫 {order.couponName}</p> : null}
                           </>
                         );
                       })()}
@@ -2406,6 +2437,14 @@ export default function App() {
             {banner.message}
           </div>
         ) : null}
+
+        <div className="quick-bubbles">
+          {activeSessionEmpty ? DEMO_EXAMPLES.slice(0, 3).map((ex) => (
+            <button className="quick-bubble" key={ex.title} onClick={() => setDraft(ex.describe)} type="button">
+              {ex.title}
+            </button>
+          )) : null}
+        </div>
 
         <form className="composer" onSubmit={handleSubmit}>
           <div className="shortcut-panel">
