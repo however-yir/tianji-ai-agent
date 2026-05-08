@@ -48,7 +48,7 @@ public class SignUtils {
      */
     public static String generateToken(String urlPath, String method, String queryParam,
                                        Object body, long expireTime, String accessKey, String secretKey) {
-        log.debug("generateToken: urlPath={}, method={}, queryParam={}, body={}, expireTime={}", urlPath, method, queryParam, body, expireTime);
+        log.debug("generateToken: urlPath={}, method={}, expireTime={}", urlPath, method, expireTime);
         if (StringUtils.isEmpty(accessKey) || StringUtils.isEmpty(secretKey)) {
             log.error("invalid AK or SK");
             throw new CommonException("Invalid AK or SK");
@@ -98,7 +98,7 @@ public class SignUtils {
             //  v2-{AK}-{ExpireTime}-{Signature}
             token = String.format("%s-%s-%s-%s", TOKEN_VERSION, accessKey, expireTime,
                     new String(HexUtil.encodeHex(md5.digest())));
-            log.info("token contents is : {}", token);
+            log.debug("token generated: version={} accessKey={} expireTime={}", TOKEN_VERSION, accessKey, expireTime);
         } catch (UnsupportedEncodingException e) {
             log.error("failed to decode url or query path");
             throw new RuntimeException("Bad encoded url path or query string");
@@ -123,10 +123,11 @@ public class SignUtils {
      */
     public static boolean verifyToken(String token, String uri, String method,
                                       String queryParam, Object body, String accessKey, String secretKey) {
-        log.debug("verifyToken: token={},urlPath={},method={},queryParam={},body={}", token, uri, method, queryParam, body);
+        String tokenHash = token != null && token.length() > 8 ? token.substring(0, 8) : String.valueOf(token);
+        log.debug("verifyToken: method={} uri={} tokenHash={}", method, uri, tokenHash);
 
         if (StringUtils.isEmpty(token)) {
-            log.warn("null token");
+            log.warn("auth_reject method={} uri={} reason=empty_token", method, uri);
             return false;
         }
 
@@ -134,27 +135,27 @@ public class SignUtils {
             String[] tokenParts = token.split("-");
 
             if (tokenParts.length != 4) {
-                log.warn("invalid token format");
+                log.warn("auth_reject method={} uri={} tokenHash={} reason=invalid_format", method, uri, tokenHash);
                 return false;
             }
 
             if (!TOKEN_VERSION.equals(tokenParts[0])) {
-                log.warn("invalid token protocol version");
+                log.warn("auth_reject method={} uri={} tokenHash={} reason=bad_version", method, uri, tokenHash);
                 return false;
             }
 
             long expireTime = Long.parseLong(tokenParts[2]);
             if (expireTime < System.currentTimeMillis()) {
-                log.warn("expired token");
+                log.warn("auth_reject method={} uri={} tokenHash={} reason=expired", method, uri, tokenHash);
                 return false;
             }
 
             if (token.equals(generateToken(uri, method, queryParam, body, expireTime, accessKey, secretKey))) {
+                log.debug("auth_ok method={} uri={} tokenHash={}", method, uri, tokenHash);
                 return true;
             }
         } catch (Exception e) {
-            log.error("failed to parse token '{}',e:", token, e);
-
+            log.error("auth_error method={} uri={} tokenHash={} error={}", method, uri, tokenHash, e.getMessage());
         }
 
         return false;

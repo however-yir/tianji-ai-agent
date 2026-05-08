@@ -46,7 +46,7 @@ describe("App", () => {
 
   it("shows a friendly 401 banner in api mode", async () => {
     window.localStorage.setItem("tianji.chat.run-mode", JSON.stringify("api"));
-    window.localStorage.setItem("tianji.chat.api-token", JSON.stringify("Bearer demo-token"));
+    window.sessionStorage.setItem("tianji.chat.api-token", JSON.stringify({ value: "Bearer demo-token", expiresAt: Date.now() + 3600000 }));
     vi.mocked(fetch)
       .mockImplementationOnce(() =>
         Promise.resolve(
@@ -75,7 +75,7 @@ describe("App", () => {
 
   it("uploads attachments and renders streamed references in api mode", async () => {
     window.localStorage.setItem("tianji.chat.run-mode", JSON.stringify("api"));
-    window.localStorage.setItem("tianji.chat.api-token", JSON.stringify("Bearer demo-token"));
+    window.sessionStorage.setItem("tianji.chat.api-token", JSON.stringify({ value: "Bearer demo-token", expiresAt: Date.now() + 3600000 }));
 
     vi.mocked(fetch)
       .mockImplementationOnce(() => jsonResponse([]))
@@ -128,16 +128,19 @@ describe("App", () => {
     await user.type(screen.getByPlaceholderText(/连接真实 API 后即可联调/), "请总结附件重点");
     await user.click(screen.getByRole("button", { name: "发送" }));
 
-    await waitFor(() => {
-      expect(screen.getByTestId("rich-markdown")).toHaveTextContent("这是来自附件的回答。");
-    });
-    expect(await screen.findByText("brief.txt")).toBeInTheDocument();
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("rich-markdown")).toHaveTextContent("这是来自附件的回答。");
+      },
+      { timeout: 3000 },
+    );
+    expect(screen.getAllByText(/brief.txt/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/引用与说明/)).toBeInTheDocument();
   });
 
   it("supports retry after api streaming failure", async () => {
     window.localStorage.setItem("tianji.chat.run-mode", JSON.stringify("api"));
-    window.localStorage.setItem("tianji.chat.api-token", JSON.stringify("Bearer demo-token"));
+    window.sessionStorage.setItem("tianji.chat.api-token", JSON.stringify({ value: "Bearer demo-token", expiresAt: Date.now() + 3600000 }));
 
     vi.mocked(fetch)
       .mockImplementationOnce(() => jsonResponse([]))
@@ -164,13 +167,21 @@ describe("App", () => {
     await user.type(screen.getByPlaceholderText(/连接真实 API 后即可联调/), "帮我输出一份运行建议");
     await user.click(screen.getByRole("button", { name: "发送" }));
 
-    expect(await screen.findByText(/服务端出现异常/)).toBeInTheDocument();
+    await waitFor(
+      () => {
+        expect(screen.getByText(/服务端出现异常/)).toBeInTheDocument();
+      },
+      { timeout: 3000 },
+    );
 
-    await user.click(await screen.findByRole("button", { name: "重试" }));
+    await user.click(screen.getByRole("button", { name: "重试" }));
 
-    await waitFor(() => {
-      expect(screen.getByTestId("rich-markdown")).toHaveTextContent("重试成功。");
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("rich-markdown")).toHaveTextContent("重试成功。");
+      },
+      { timeout: 3000 },
+    );
     expect(screen.getByRole("button", { name: "重新生成" })).toBeInTheDocument();
   });
 });

@@ -17,9 +17,10 @@ public class DevDemoProperties {
     private Long userId = 10001L;
 
     /**
-     * 演示模式下的默认 token
+     * 演示模式下的默认 token。
+     * 必须通过环境变量 AIGC_DEMO_TOKEN 注入，禁止使用硬编码默认值。
      */
-    private String token = "dev-demo-token";
+    private String token;
 
     /**
      * 流式输出时的每段间隔，单位毫秒

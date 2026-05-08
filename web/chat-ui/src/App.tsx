@@ -1,6 +1,4 @@
 import {
-  Suspense,
-  lazy,
   useCallback,
   useDeferredValue,
   useEffect,
@@ -11,12 +9,51 @@ import {
 import type { ChangeEvent, FormEvent } from "react";
 import "./App.css";
 
-const RichMarkdown = lazy(() => import("./components/RichMarkdown"));
+import type {
+  AttachmentItem,
+  BannerState,
+  ChatMessage,
+  DemoSession,
+  DemoStore,
+  HistoryApiItem,
+  MessageApiItem,
+  RunMode,
+  SessionApiResponse,
+  SessionMeta,
+  SessionSummary,
+  SpeechRecognitionInstance,
+} from "./types";
+import {
+  requestJson,
+  uploadAttachments,
+  loadToken,
+  saveToken,
+} from "./api/client";
+import {
+  buildAttachmentContext,
+  createBanner,
+  createId,
+  downloadTextFile,
+  errorToMessage,
+  extractAttachmentIds,
+  findShortcut,
+  formatTimestamp,
+  formatBytes,
+  readStorage,
+  resolvePrompt,
+  stripMarkdown,
+  snapshotAttachments,
+  toReferences,
+  toToolSummary,
+  writeStorage,
+  titleFromQuestion,
+} from "./utils/helpers";
+import { createSeedDemoStore } from "./utils/demo";
+import { useStreaming } from "./hooks/useStreaming";
+import MessageBubble from "./components/MessageBubble";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 const STORAGE_KEYS = {
   mode: "tianji.chat.run-mode",
-  token: "tianji.chat.api-token",
   meta: "tianji.chat.session-meta",
   demo: "tianji.chat.demo-store",
 };
@@ -77,975 +114,10 @@ const DEMO_EXAMPLES = [
   },
 ];
 
-type RunMode = "demo" | "api";
-type MessageRole = "user" | "assistant";
-type MessageStatus = "done" | "streaming" | "failed";
-type BannerTone = "info" | "warning" | "error";
-
-type AttachmentItem = {
-  id: string;
-  name: string;
-  size: number;
-  type: string;
-  file?: File;
-  uploadId?: string;
-  previewText?: string;
-  chunkCount?: number;
-};
-
-type ReferenceCard = {
-  title: string;
-  href?: string;
-  excerpt?: string;
-  tag?: string;
-};
-
-type ToolSummaryItem = {
-  label: string;
-  value: string;
-};
-
-type CourseCardData = {
-  id: string;
-  name: string;
-  price: number;
-  usePeople: string;
-  validDuration?: number;
-  detail?: string;
-};
-
-type OrderCardData = {
-  count: number;
-  totalAmount: number;
-  discountAmount: number;
-  payAmount: number;
-  orderId: string;
-  couponName?: string;
-};
-
-type RouteResult = {
-  intent?: string;
-  confidence?: number;
-  reason?: string;
-  nextAgent?: string;
-  needRag?: boolean;
-  needMemory?: boolean;
-  riskLevel?: string;
-};
-
-type EvidenceCard = {
-  sourceType?: string;
-  title?: string;
-  score?: number;
-  reason?: string;
-  snippet?: string;
-};
-
-type MemoryHit = {
-  type?: string;
-  content?: string;
-  source?: string;
-};
-
-type ChatMessage = {
-  id: string;
-  role: MessageRole;
-  content: string;
-  createdAt: string;
-  status: MessageStatus;
-  params?: Record<string, unknown> | null;
-  references?: ReferenceCard[];
-  toolSummary?: ToolSummaryItem[];
-  routeResult?: RouteResult | null;
-  evidence?: EvidenceCard[];
-  memoryHits?: MemoryHit[];
-  originQuestion?: string;
-  attachments?: AttachmentItem[];
-  attachmentIds?: string[];
-  errorText?: string;
-};
-
-type SessionSummary = {
-  id: string;
-  title: string;
-  updatedAt: string;
-  source: RunMode;
-  lastSnippet?: string;
-};
-
-type DemoSession = {
-  id: string;
-  title: string;
-  updatedAt: string;
-  messages: ChatMessage[];
-};
-
-type DemoStore = {
-  sessions: DemoSession[];
-};
-
-type SessionMeta = {
-  title?: string;
-  pinned?: boolean;
-  hidden?: boolean;
-};
-
-type BannerState = {
-  tone: BannerTone;
-  message: string;
-};
-
-type ChatEventPayload = {
-  eventType?: number;
-  eventData?: unknown;
-};
-
-type SessionApiResponse = {
-  sessionId?: string;
-  title?: string;
-  describe?: string;
-  examples?: Array<{ title?: string; describe?: string }>;
-};
-
-type HistoryApiItem = {
-  sessionId?: string;
-  title?: string;
-  updateTime?: string;
-};
-
-type MessageApiItem = {
-  type?: string;
-  content?: string;
-  params?: Record<string, unknown>;
-};
-
-type AttachmentUploadResponseItem = {
-  attachmentId?: string;
-  name?: string;
-  contentType?: string;
-  size?: number;
-  previewText?: string;
-  chunkCount?: number;
-};
-
-type SpeechRecognitionResultLike = {
-  transcript: string;
-};
-
-type SpeechRecognitionEventLike = {
-  results: ArrayLike<ArrayLike<SpeechRecognitionResultLike>>;
-};
-
-type SpeechRecognitionErrorLike = {
-  error?: string;
-};
-
-type SpeechRecognitionInstance = {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  onstart: (() => void) | null;
-  onend: (() => void) | null;
-  onerror: ((event: SpeechRecognitionErrorLike) => void) | null;
-  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
-  start: () => void;
-  stop: () => void;
-};
-
-type SpeechRecognitionFactory = new () => SpeechRecognitionInstance;
-
-declare global {
-  interface Window {
-    SpeechRecognition?: SpeechRecognitionFactory;
-    webkitSpeechRecognition?: SpeechRecognitionFactory;
-  }
-}
-
-class HttpError extends Error {
-  status: number;
-  payload: unknown;
-
-  constructor(status: number, message: string, payload?: unknown) {
-    super(message);
-    this.status = status;
-    this.payload = payload;
-  }
-}
-
-function createId(prefix: string): string {
-  return `${prefix}-${Math.random().toString(16).slice(2)}-${Date.now().toString(16)}`;
-}
-
-function readStorage<T>(key: string, fallback: T): T {
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) {
-      return fallback;
-    }
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-}
-
-function writeStorage<T>(key: string, value: T) {
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // ignore localStorage quota failures
-  }
-}
-
-function formatTimestamp(value: string): string {
-  if (!value) {
-    return "";
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return new Intl.DateTimeFormat("zh-CN", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-}
-
-function formatBytes(size: number): string {
-  if (!Number.isFinite(size) || size <= 0) {
-    return "0 KB";
-  }
-  if (size < 1024 * 1024) {
-    return `${Math.max(1, Math.round(size / 1024))} KB`;
-  }
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function snapshotAttachments(items: AttachmentItem[]): AttachmentItem[] {
-  return items.map(({ id, name, size, type, uploadId, previewText, chunkCount }) => ({
-    id,
-    name,
-    size,
-    type,
-    uploadId,
-    previewText,
-    chunkCount,
-  }));
-}
-
-function stripMarkdown(input: string): string {
-  return input
-    .replace(/```[\s\S]*?```/g, " ")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/!\[[^\]]*]\([^)]+\)/g, " ")
-    .replace(/\[[^\]]+]\([^)]+\)/g, "$1")
-    .replace(/[#>*_-]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function safeJsonParse(raw: string): unknown {
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return raw;
-  }
-}
-
-function normalizeText(value: unknown): string {
-  if (typeof value === "string") {
-    return value;
-  }
-  if (value == null) {
-    return "";
-  }
-  if (typeof value === "object") {
-    try {
-      return JSON.stringify(value, null, 2);
-    } catch {
-      return String(value);
-    }
-  }
-  return String(value);
-}
-
-function formatMoney(value: unknown): string {
-  const amount = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(amount)) {
-    return "¥0";
-  }
-  return `¥${amount.toLocaleString("zh-CN", { maximumFractionDigits: 2 })}`;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
-}
-
-function extractCourseCard(params?: Record<string, unknown> | null): CourseCardData | null {
-  if (!params) {
-    return null;
-  }
-  const courseEntry = Object.entries(params).find(([key, value]) => key.startsWith("courseInfo_") && asRecord(value));
-  if (!courseEntry) {
-    return null;
-  }
-  const course = courseEntry[1] as Record<string, unknown>;
-  return {
-    id: normalizeText(course.id),
-    name: normalizeText(course.name) || "课程推荐",
-    price: Number(course.price || 0),
-    usePeople: normalizeText(course.usePeople) || "适合希望系统学习的同学",
-    validDuration: Number(course.validDuration || 0) || undefined,
-    detail: normalizeText(course.detail),
-  };
-}
-
-function extractOrderCard(params?: Record<string, unknown> | null): OrderCardData | null {
-  const order = asRecord(params?.prePlaceOrder);
-  if (!order) {
-    return null;
-  }
-  return {
-    count: Number(order.count || 0),
-    totalAmount: Number(order.totalAmount || 0),
-    discountAmount: Number(order.discountAmount || 0),
-    payAmount: Number(order.payAmount || 0),
-    orderId: normalizeText(order.orderId),
-    couponName: normalizeText(order.couponName),
-  };
-}
-
-function normalizePayload<T>(payload: unknown): T {
-  if (
-    payload &&
-    typeof payload === "object" &&
-    "data" in payload &&
-    Object.prototype.hasOwnProperty.call(payload, "data")
-  ) {
-    return (payload as { data: T }).data;
-  }
-  return payload as T;
-}
-
-function createBanner(tone: BannerTone, message: string): BannerState {
-  return { tone, message };
-}
-
-function errorToMessage(error: unknown): string {
-  if (error instanceof HttpError) {
-    if (error.status === 401) {
-      return "接口返回 401，当前是未登录状态。你可以切换到演示模式，或填写 Bearer Token 后重试。";
-    }
-    if (error.status === 403) {
-      return "接口返回 403，说明当前账号没有访问权限。请检查 Token 对应的权限范围。";
-    }
-    if (error.status === 404) {
-      return "接口不存在或代理目标未启动，请确认后端服务和 `/api` 代理是否正常。";
-    }
-    if (error.status === 408) {
-      return "请求超时了，可能是后端处理较慢或网络不稳定，可以稍后重试。";
-    }
-    if (error.status === 429) {
-      return "请求过于频繁，模型或网关触发限流了，请稍后再试。";
-    }
-    if (error.status >= 500) {
-      return "服务端出现异常，通常是模型服务、数据库或 Redis 没有准备好。";
-    }
-    return `请求失败：${error.status}`;
-  }
-  if (error instanceof DOMException && error.name === "AbortError") {
-    return "生成已停止。";
-  }
-  if (error instanceof Error) {
-    if (error.message.toLowerCase().includes("timeout")) {
-      return "请求超时了，请确认后端和模型接口是否可用。";
-    }
-    if (error.message) {
-      return error.message;
-    }
-  }
-  return "请求失败，请检查网络、代理和后端服务。";
-}
-
-function toToolSummary(params?: Record<string, unknown> | null): ToolSummaryItem[] {
-  if (!params) {
-    return [];
-  }
-  return Object.entries(params)
-    .filter(([key]) => !["sources", "attachmentIds"].includes(key))
-    .slice(0, 4)
-    .map(([key, value]) => ({
-      label: key,
-      value: typeof value === "string" ? value : normalizeText(value),
-    }));
-}
-
-function toReferences(params?: Record<string, unknown> | null): ReferenceCard[] {
-  const rawSources = params?.sources;
-  if (!Array.isArray(rawSources)) {
-    return [];
-  }
-  return rawSources
-    .map((item): ReferenceCard | null => {
-      if (!item || typeof item !== "object") {
-        return null;
-      }
-      const source = item as Record<string, unknown>;
-      const title = normalizeText(source.attachmentName || source.title);
-      if (!title) {
-        return null;
-      }
-      const chunkIndex = source.chunkIndex ? `片段 ${normalizeText(source.chunkIndex)}` : "";
-      return {
-        title,
-        excerpt: normalizeText(source.excerpt),
-        tag: chunkIndex || "attachment",
-      } satisfies ReferenceCard;
-    })
-    .filter((item): item is ReferenceCard => item !== null);
-}
-
-function extractAttachmentIds(params?: Record<string, unknown> | null): string[] {
-  const raw = params?.attachmentIds;
-  if (!Array.isArray(raw)) {
-    return [];
-  }
-  return raw.map((item) => normalizeText(item)).filter(Boolean);
-}
-
-function findShortcut(commandText: string) {
-  const trimmed = commandText.trim().toLowerCase();
-  return SHORTCUTS.find((item) => trimmed.startsWith(item.command));
-}
-
-function resolvePrompt(input: string): string {
-  const trimmed = input.trim();
-  if (!trimmed.startsWith("/")) {
-    return trimmed;
-  }
-  const [command, ...rest] = trimmed.split(/\s+/);
-  const matched = SHORTCUTS.find((item) => item.command === command.toLowerCase());
-  if (!matched) {
-    return trimmed;
-  }
-  const tail = rest.join(" ").trim();
-  if (!tail) {
-    return matched.prompt;
-  }
-  return `${matched.prompt}\n\n补充说明：${tail}`;
-}
-
-function buildAttachmentContext(question: string, attachments: AttachmentItem[]): string {
-  if (!attachments.length) {
-    return question;
-  }
-  const attachmentLines = attachments.map((file) => {
-    const typeText = file.type || "unknown";
-    return `- ${file.name} (${typeText}, ${formatBytes(file.size)})`;
-  });
-  return `${question}\n\n附件上下文：\n${attachmentLines.join("\n")}\n请结合这些附件信息回答。`;
-}
-
-function titleFromQuestion(question: string): string {
-  const normalized = stripMarkdown(question).replace(/\s+/g, " ").trim();
-  if (!normalized) {
-    return "新的对话";
-  }
-  return normalized.slice(0, 24);
-}
-
-function createDemoMessage(
-  role: MessageRole,
-  content: string,
-  extras: Partial<ChatMessage> = {},
-): ChatMessage {
-  return {
-    id: createId(role),
-    role,
-    content,
-    createdAt: new Date().toISOString(),
-    status: "done",
-    ...extras,
-  };
-}
-
-function createSeedDemoStore(): DemoStore {
-  const sessionAId = createId("demo-session");
-  const sessionBId = createId("demo-session");
-  return {
-    sessions: [
-      {
-        id: sessionAId,
-        title: "课程顾问工作台演示",
-        updatedAt: new Date(Date.now() - 1000 * 60 * 38).toISOString(),
-        messages: [
-          createDemoMessage("user", "帮我总结一下 AI 课程咨询助手应该覆盖哪些关键流程？"),
-          createDemoMessage(
-            "assistant",
-            [
-              "可以从 4 个环节组织：",
-              "",
-              "1. 线索进入：识别用户画像、渠道来源、咨询意图",
-              "2. 需求诊断：提问学习目标、基础水平、预算和时间",
-              "3. 方案推荐：匹配课程、师资、服务组合和风险提示",
-              "4. 转化跟进：记录异议、输出待办、沉淀会话纪要",
-              "",
-              "```mermaid",
-              "flowchart LR",
-              'A["线索进入"] --> B["需求诊断"]',
-              'B --> C["方案推荐"]',
-              'C --> D["转化跟进"]',
-              "```",
-            ].join("\n"),
-            {
-              params: {
-                mode: "demo",
-                workflow: "course-consulting",
-                leadScore: 86,
-              },
-              toolSummary: [
-                { label: "workflow", value: "course-consulting" },
-                { label: "leadScore", value: "86" },
-              ],
-              references: [
-                {
-                  title: "演示说明",
-                  excerpt: "这条回复使用本地演示数据，便于零配置体验完整前端。",
-                  tag: "demo",
-                },
-              ],
-            },
-          ),
-        ],
-      },
-      {
-        id: sessionBId,
-        title: "前端升级建议",
-        updatedAt: new Date(Date.now() - 1000 * 60 * 14).toISOString(),
-        messages: [
-          createDemoMessage("user", "给我一个把聊天前端升级到更专业水准的路线图。"),
-          createDemoMessage(
-            "assistant",
-            [
-              "可以按三个阶段推进：",
-              "",
-              "- 阶段 1：补默认演示模式、登录闭环、错误提示与历史会话",
-              "- 阶段 2：补 Markdown、代码高亮、附件、重试与导出",
-              "- 阶段 3：补测试、Docker、本地 mock、性能优化",
-              "",
-              "如果要估算迭代优先级，可以先做公式与图表展示，例如 $F(x)=\\sum_{i=1}^{n}x_i$ 这类输出会更完整。",
-            ].join("\n"),
-            {
-              params: {
-                mode: "demo",
-                priority: ["体验", "工程化", "演示能力"],
-                eta: "7 days",
-              },
-              references: [
-                {
-                  title: "项目建议",
-                  excerpt: "优先做用户一进入就能跑通的路径，再叠加高级能力。",
-                  tag: "strategy",
-                },
-              ],
-            },
-          ),
-        ],
-      },
-    ],
-  };
-}
-
-function buildDemoReply(question: string, attachments: AttachmentItem[]): Partial<ChatMessage> {
-  const normalized = question.toLowerCase();
-  const attachmentNames = attachments.map((item) => item.name).join("、");
-
-  if (normalized.includes("推荐课程") || normalized.includes("入门 java") || normalized.includes("java 后端")) {
-    return {
-      content: [
-        "我会先按“目标、基础、周期、转化动作”来推荐课程。",
-        "",
-        "你是零基础并希望 3 个月入门 Java 后端，优先建议从 Java 基础、Spring Boot 实战、项目就业课三段走。",
-        "",
-        "推荐顺序：",
-        "",
-        "1. Java 开发零基础入门：补语法、面向对象和集合基础",
-        "2. Spring Boot 企业项目课：把接口、数据库、Redis 串起来",
-        "3. Java 后端就业项目课：用完整项目沉淀简历可讲的业务经验",
-      ].join("\n"),
-      params: {
-        mode: "demo",
-        route: "RECOMMEND",
-        courseInfo_1589905661084430337: {
-          id: "1589905661084430337",
-          name: "Java 后端工程师体系课",
-          price: 199,
-          validDuration: 12,
-          usePeople: "零基础或转行学习者",
-          detail: "覆盖 Java 基础、Spring Boot、Redis、项目实战和面试表达。",
-        },
-      },
-      references: [
-        {
-          title: "RouteAgent 命中推荐场景",
-          excerpt: "推荐类问题会进入 RecommendAgent，再由 CourseTools 返回课程卡片参数。",
-          tag: "RECOMMEND",
-        },
-      ],
-    };
-  }
-
-  if (normalized.includes("适合谁") || normalized.includes("价格多少") || normalized.includes("课程详情")) {
-    return {
-      content: [
-        "这门课更适合希望系统学习 Java 后端、并需要项目经验沉淀的同学。",
-        "",
-        "课程会覆盖基础语法、Spring Boot、Redis、接口设计和业务项目实践。当前演示价格为 199 元，有效期 12 个月。",
-      ].join("\n"),
-      params: {
-        mode: "demo",
-        route: "CONSULT",
-        courseInfo_1589905661084430337: {
-          id: "1589905661084430337",
-          name: "Java 后端工程师体系课",
-          price: 199,
-          validDuration: 12,
-          usePeople: "零基础、转行学习者、需要补项目经验的后端初学者",
-          detail: "以课程详情查询为核心，适合展示 ConsultAgent + CourseTools 链路。",
-        },
-      },
-    };
-  }
-
-  if (normalized.includes("购买课程") || normalized.includes("生成确认订单") || normalized.includes("预下单")) {
-    return {
-      content: [
-        "我已经为你生成一张预下单确认卡片。",
-        "",
-        "在真实链路中，BuyAgent 不会直接完成支付，而是调用 OrderTools 生成订单确认信息，再由前端展示给用户做最终确认。",
-      ].join("\n"),
-      params: {
-        mode: "demo",
-        route: "BUY",
-        prePlaceOrder: {
-          count: 1,
-          totalAmount: 199,
-          discountAmount: 20,
-          couponName: "单券：【新人立减 20 元】",
-          payAmount: 179,
-          courseIds: ["1589905661084430337"],
-          orderId: 202604290001,
-          couponId: 9001,
-        },
-      },
-      references: [
-        {
-          title: "Tool Calling",
-          excerpt: "OrderTools.prePlaceOrder 返回结构化订单参数，前端按 PARAM 事件渲染卡片。",
-          tag: "BUY",
-        },
-      ],
-    };
-  }
-
-  if (normalized.includes("缓存穿透") || normalized.includes("redis")) {
-    return {
-      content: [
-        "Redis 缓存穿透指的是：请求查询一个数据库中也不存在的数据，导致每次都绕过缓存打到数据库。",
-        "",
-        "常见处理方式：",
-        "",
-        "1. 缓存空值，并设置较短 TTL",
-        "2. 使用布隆过滤器提前拦截不存在的 key",
-        "3. 对异常流量做限流和参数校验",
-        "",
-        "在课程业务里，课程 ID 查询就适合先做参数校验，再结合空值缓存保护课程服务。",
-      ].join("\n"),
-      params: {
-        mode: "demo",
-        route: "KNOWLEDGE",
-        topic: "Redis 缓存穿透",
-      },
-    };
-  }
-
-  if (normalized.includes("mermaid") || normalized.includes("流程")) {
-    return {
-      content: [
-        "下面给你一个更适合汇报的流程梳理：",
-        "",
-        "```mermaid",
-        "flowchart TD",
-        'U["用户提问"] --> R["意图识别"]',
-        'R --> P["方案规划"]',
-        'P --> T["工具调用 / 参数输出"]',
-        'T --> A["流式回答"]',
-        "```",
-        "",
-        "这样做的好处是：结构清晰、可演示、后续也容易接自动化测试。",
-      ].join("\n"),
-      params: {
-        mode: "demo",
-        scene: "mermaid",
-        attachmentCount: attachments.length,
-      },
-      references: [
-        {
-          title: "演示模式说明",
-          excerpt: "本地演示会模拟 SSE、参数回传和工具调用展示。",
-          tag: "demo",
-        },
-      ],
-    };
-  }
-
-  if (normalized.includes("公式") || normalized.includes("math")) {
-    return {
-      content: [
-        "可以，下面给你一个带数学公式的示例：",
-        "",
-        "当我们用一个简单评分来表示会话质量时，可以写成：",
-        "",
-        "$$Score = 0.45 \\times Intent + 0.35 \\times Context + 0.20 \\times Action$$",
-        "",
-        "这样就能把意图识别、上下文完整度和行动建议统一进一个评分体系。",
-      ].join("\n"),
-      params: {
-        mode: "demo",
-        scene: "math",
-      },
-    };
-  }
-
-  if (attachments.length) {
-    return {
-      content: [
-        `我已经接收到 ${attachments.length} 个附件的上下文信息：${attachmentNames}。`,
-        "",
-        "当前前端会把附件名、类型和大小一并加入提问上下文，适合演示“基于附件提问”的交互流程。",
-        "",
-        "如果你后续想做成真正的文件问答，下一步建议补一个后端上传解析接口，把文档内容或图像 OCR 结果再送入模型。",
-      ].join("\n"),
-      params: {
-        mode: "demo",
-        attachmentNames,
-        attachmentCount: attachments.length,
-      },
-      references: [
-        {
-          title: "附件处理建议",
-          excerpt: "当前是前端演示版上下文注入，后续可升级为真实上传与解析。",
-          tag: "attachment",
-        },
-      ],
-    };
-  }
-
-  if (normalized.includes("测试") || normalized.includes("运行")) {
-    return {
-      content: [
-        "如果目标是“更容易跑起来”，建议优先完成这三件事：",
-        "",
-        "1. 默认进入 `演示模式`，先保证零配置能体验",
-        "2. 提供 `真实 API` 连接面板，明确 Token 和依赖说明",
-        "3. 用 `docker-compose` 把 MySQL、Redis、后端、前端串起来",
-        "",
-        "这样对面试、汇报和团队协作都会友好很多。",
-      ].join("\n"),
-      params: {
-        mode: "demo",
-        focus: ["demo", "api", "compose"],
-      },
-    };
-  }
-
-  return {
-    content: [
-      "这是一个更接近成品的演示回复：",
-      "",
-      `- 你当前的问题是：${stripMarkdown(question) || "未提供具体问题"}`,
-      "- 当前运行模式：本地演示",
-      "- 支持会话管理、消息重试、Mermaid、数学公式、附件上下文和语音输入",
-      "",
-      "如果你切到真实 API 模式，界面会继续走同一套工作流，只是数据改成真实后端返回。",
-    ].join("\n"),
-      params: {
-        mode: "demo",
-        confidence: "high",
-      },
-      references: [
-        {
-          title: "下一步建议",
-          excerpt: "可以继续补 Docker、本地 mock、前端自动化测试和真正的文件上传接口。",
-          tag: "next",
-        },
-      ],
-    };
-}
-
-function downloadTextFile(fileName: string, content: string) {
-  const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = fileName;
-  link.click();
-  URL.revokeObjectURL(link.href);
-}
-
-async function requestJson<T>(
-  path: string,
-  init: RequestInit,
-  token: string,
-  timeoutMs = 15000,
-): Promise<T> {
-  const controller = new AbortController();
-  const headers = new Headers(init.headers);
-  let timeoutTriggered = false;
-  if (init.body && !(init.body instanceof FormData) && !headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
-  }
-  if (token.trim()) {
-    headers.set("Authorization", token.trim());
-  }
-  const timer = window.setTimeout(() => {
-    timeoutTriggered = true;
-    controller.abort();
-  }, timeoutMs);
-
-  try {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-      ...init,
-      headers,
-      signal: controller.signal,
-    });
-    const raw = await response.text();
-    const payload = raw ? safeJsonParse(raw) : null;
-    if (!response.ok) {
-      throw new HttpError(
-        timeoutTriggered ? 408 : response.status,
-        response.statusText || "Request failed",
-        payload,
-      );
-    }
-    return normalizePayload<T>(payload);
-  } catch (error) {
-    if (timeoutTriggered) {
-      throw new Error("timeout");
-    }
-    throw error;
-  } finally {
-    window.clearTimeout(timer);
-  }
-}
-
-async function streamChatEvents(
-  payload: { question: string; sessionId: string; attachmentIds?: string[] },
-  token: string,
-  signal: AbortSignal,
-  onEvent: (event: ChatEventPayload) => void,
-) {
-  const headers = new Headers({
-    "Content-Type": "application/json",
-  });
-  if (token.trim()) {
-    headers.set("Authorization", token.trim());
-  }
-  const response = await fetch(`${API_BASE_URL}/chat`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(payload),
-    signal,
-  });
-  if (!response.ok) {
-    const raw = await response.text();
-    throw new HttpError(response.status, response.statusText || "Chat request failed", safeJsonParse(raw));
-  }
-  if (!response.body) {
-    throw new Error("后端没有返回可读取的流式响应。");
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder("utf-8");
-  let buffer = "";
-
-  const flushBlock = (block: string) => {
-    const dataLines = block
-      .split(/\r?\n/)
-      .filter((line) => line.startsWith("data:"))
-      .map((line) => line.replace(/^data:\s?/, ""))
-      .join("\n");
-
-    if (!dataLines || dataLines === "[DONE]") {
-      return;
-    }
-    const payload = safeJsonParse(dataLines) as ChatEventPayload;
-    onEvent(payload);
-  };
-
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) {
-      break;
-    }
-    buffer += decoder.decode(value, { stream: true });
-    let separatorIndex = buffer.indexOf("\n\n");
-    while (separatorIndex >= 0) {
-      const block = buffer.slice(0, separatorIndex).trim();
-      buffer = buffer.slice(separatorIndex + 2);
-      if (block) {
-        flushBlock(block);
-      }
-      separatorIndex = buffer.indexOf("\n\n");
-    }
-  }
-
-  const tail = buffer.trim();
-  if (tail) {
-    flushBlock(tail);
-  }
-}
-
-async function uploadAttachments(
-  attachments: AttachmentItem[],
-  token: string,
-): Promise<{ uploadedIds: string[]; uploadedItems: AttachmentItem[] }> {
-  const formData = new FormData();
-  attachments.forEach((attachment) => {
-    if (attachment.file) {
-      formData.append("files", attachment.file, attachment.name);
-    }
-  });
-
-  const response = await requestJson<AttachmentUploadResponseItem[]>(
-    "/attachment/upload",
-    {
-      method: "POST",
-      body: formData,
-    },
-    token,
-    30000,
-  );
-
-  const uploadedItems = (response || []).map((item, index) => ({
-    id: attachments[index]?.id || createId("file"),
-    name: item.name || attachments[index]?.name || "未命名附件",
-    size: item.size || attachments[index]?.size || 0,
-    type: item.contentType || attachments[index]?.type || "application/octet-stream",
-    uploadId: item.attachmentId || "",
-    previewText: item.previewText || "",
-    chunkCount: item.chunkCount || 0,
-  }));
-
-  return {
-    uploadedIds: uploadedItems.map((item) => item.uploadId || "").filter(Boolean),
-    uploadedItems,
-  };
-}
 
 export default function App() {
   const [runMode, setRunMode] = useState<RunMode>(() => readStorage(STORAGE_KEYS.mode, "demo"));
-  const [token, setToken] = useState(() => readStorage(STORAGE_KEYS.token, ""));
+  const [token, setToken] = useState(() => loadToken());
   const [sessionMeta, setSessionMeta] = useState<Record<string, SessionMeta>>(() =>
     readStorage(STORAGE_KEYS.meta, {}),
   );
@@ -1068,14 +140,11 @@ export default function App() {
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [voiceListening, setVoiceListening] = useState(false);
   const [speechError, setSpeechError] = useState("");
-  const [speakingMessageId, setSpeakingMessageId] = useState("");
 
-  const abortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const speechRecognitionRef = useRef<SpeechRecognitionInstance | null>(null);
-  const currentStreamRef = useRef<{ sessionId: string; messageId: string } | null>(null);
   const deferredSearch = useDeferredValue(searchText);
 
   useEffect(() => {
@@ -1083,7 +152,7 @@ export default function App() {
   }, [runMode]);
 
   useEffect(() => {
-    writeStorage(STORAGE_KEYS.token, token);
+    saveToken(token);
   }, [token]);
 
   useEffect(() => {
@@ -1543,6 +612,23 @@ export default function App() {
     [patchMessagesForSession],
   );
 
+  const {
+    handleStopStreaming,
+    runDemoStreaming,
+    runApiStreaming,
+  } = useStreaming({
+    setAssistantState,
+    setBanner,
+    setIsStreaming,
+    token,
+    activeSessionId,
+    runMode,
+    sessionMeta,
+    activeTitle: activeTitle || "新的对话",
+    getSessionMessages,
+    upsertApiSessionSummary,
+  });
+
   const appendMessages = useCallback(
     (sessionId: string, nextMessages: ChatMessage[]) => {
       patchMessagesForSession(sessionId, (messages) => [...messages, ...nextMessages]);
@@ -1570,173 +656,6 @@ export default function App() {
     [patchMessagesForSession, runMode],
   );
 
-  const handleStopStreaming = useCallback(async () => {
-    abortRef.current?.abort();
-    const currentStream = currentStreamRef.current;
-    if (currentStream) {
-      setAssistantState(currentStream.sessionId, currentStream.messageId, (message) => ({
-        status: "done",
-        content: message.content || "已停止生成。",
-      }));
-      currentStreamRef.current = null;
-    }
-    if (runMode === "api" && activeSessionId) {
-      try {
-        await requestJson<void>(`/chat/stop?sessionId=${encodeURIComponent(activeSessionId)}`, { method: "POST" }, token);
-      } catch {
-        // stop endpoint failure should not block UI stop feedback
-      }
-    }
-    setIsStreaming(false);
-  }, [activeSessionId, runMode, setAssistantState, token]);
-
-  const runDemoStreaming = useCallback(
-    async (sessionId: string, messageId: string, question: string, currentAttachments: AttachmentItem[]) => {
-      const controller = new AbortController();
-      abortRef.current = controller;
-      currentStreamRef.current = { sessionId, messageId };
-      setIsStreaming(true);
-
-      try {
-        const reply = buildDemoReply(question, currentAttachments);
-        const chunks = (reply.content || "").match(/.{1,24}/g) || [reply.content || ""];
-        for (const chunk of chunks) {
-          if (controller.signal.aborted) {
-            throw new DOMException("aborted", "AbortError");
-          }
-          await new Promise((resolve) => window.setTimeout(resolve, 45));
-          setAssistantState(sessionId, messageId, (message) => ({
-            content: message.content + chunk,
-            status: "streaming",
-          }));
-        }
-        setAssistantState(sessionId, messageId, {
-          status: "done",
-          params: reply.params || null,
-          toolSummary: toToolSummary(reply.params || null),
-          references: reply.references || [],
-        });
-        setBanner(null);
-      } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          setBanner(createBanner("info", "已停止当前生成。"));
-        } else {
-          setAssistantState(sessionId, messageId, {
-            status: "failed",
-            errorText: errorToMessage(error),
-          });
-          setBanner(createBanner("warning", errorToMessage(error)));
-        }
-      } finally {
-        setIsStreaming(false);
-        abortRef.current = null;
-        currentStreamRef.current = null;
-      }
-    },
-    [setAssistantState],
-  );
-
-  const runApiStreaming = useCallback(
-    async (
-      sessionId: string,
-      messageId: string,
-      question: string,
-      attachmentIds: string[] = [],
-    ) => {
-      const controller = new AbortController();
-      abortRef.current = controller;
-      currentStreamRef.current = { sessionId, messageId };
-      setIsStreaming(true);
-
-      try {
-        await streamChatEvents({ question, sessionId, attachmentIds }, token, controller.signal, (event) => {
-          if (event.eventType === 1001) {
-            setAssistantState(sessionId, messageId, (message) => ({
-              content: message.content + normalizeText(event.eventData),
-              status: "streaming",
-            }));
-            return;
-          }
-          if (event.eventType === 1003) {
-            const params =
-              event.eventData && typeof event.eventData === "object"
-                ? (event.eventData as Record<string, unknown>)
-                : { payload: event.eventData };
-            setAssistantState(sessionId, messageId, {
-              params,
-              toolSummary: toToolSummary(params),
-              references: toReferences(params),
-              attachmentIds: extractAttachmentIds(params),
-            });
-            return;
-          }
-          if (event.eventType === 1004) {
-            const route = (event.eventData && typeof event.eventData === "object"
-              ? event.eventData
-              : { intent: String(event.eventData ?? "") }) as RouteResult;
-            setAssistantState(sessionId, messageId, { routeResult: route });
-            return;
-          }
-          if (event.eventType === 1006) {
-            const evidenceList = (event.eventData && typeof event.eventData === "object"
-              ? [event.eventData as EvidenceCard]
-              : []) as EvidenceCard[];
-            if (evidenceList.length > 0) {
-              setAssistantState(sessionId, messageId, (prev) => ({
-                evidence: [...(prev.evidence ?? []), ...evidenceList],
-              }));
-            }
-            return;
-          }
-          if (event.eventType === 1007) {
-            const hits = (event.eventData && typeof event.eventData === "object"
-              ? [event.eventData as MemoryHit]
-              : []) as MemoryHit[];
-            if (hits.length > 0) {
-              setAssistantState(sessionId, messageId, (prev) => ({
-                memoryHits: [...(prev.memoryHits ?? []), ...hits],
-              }));
-            }
-            return;
-          }
-          if (event.eventType === 1002) {
-            setAssistantState(sessionId, messageId, {
-              status: "done",
-            });
-          }
-        });
-
-        setAssistantState(sessionId, messageId, (message) => ({
-          status: "done",
-          content: message.content || "模型已结束，但没有返回文本内容。",
-        }));
-        setBanner(null);
-      } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          setBanner(createBanner("info", "已停止当前生成。"));
-        } else {
-          setAssistantState(sessionId, messageId, {
-            status: "failed",
-            errorText: errorToMessage(error),
-          });
-          setBanner(createBanner("warning", errorToMessage(error)));
-        }
-      } finally {
-        setIsStreaming(false);
-        abortRef.current = null;
-        currentStreamRef.current = null;
-        upsertApiSessionSummary({
-          id: sessionId,
-          title: sessionMeta[sessionId]?.title || activeTitle,
-          updatedAt: new Date().toISOString(),
-          source: "api",
-          lastSnippet: stripMarkdown(getSessionMessages(sessionId).slice(-1)[0]?.content || ""),
-        });
-      }
-    },
-    [activeTitle, getSessionMessages, sessionMeta, setAssistantState, token, upsertApiSessionSummary],
-  );
-
   const sendQuestion = useCallback(
     async (
       questionText: string,
@@ -1749,7 +668,7 @@ export default function App() {
     ) => {
       const pendingAttachments = options?.attachments || attachments;
       const fallbackPrompt = pendingAttachments.length ? "请基于这些附件内容给我一个总结和建议。" : "";
-      const resolvedPrompt = resolvePrompt(questionText || fallbackPrompt);
+      const resolvedPrompt = resolvePrompt(questionText || fallbackPrompt, SHORTCUTS);
       if (!resolvedPrompt) {
         return;
       }
@@ -1772,10 +691,15 @@ export default function App() {
 
       const questionWithAttachments = buildAttachmentContext(resolvedPrompt, pendingAttachments);
       const assistantMessageId = options?.retryMessageId || createId("assistant");
-      const userMessage = createDemoMessage("user", resolvedPrompt, {
+      const userMessage: ChatMessage = {
+        id: createId("user"),
+        role: "user",
+        content: resolvedPrompt,
+        createdAt: new Date().toISOString(),
+        status: "done",
         attachments: messageAttachments,
         attachmentIds,
-      });
+      };
 
       if (options?.retryMessageId) {
         setAssistantState(currentSessionId, options.retryMessageId, {
@@ -1857,29 +781,6 @@ export default function App() {
     }
   }, []);
 
-  const toggleSpeechPlayback = useCallback((message: ChatMessage) => {
-    if (!("speechSynthesis" in window)) {
-      setBanner(createBanner("warning", "当前浏览器不支持文本朗读。"));
-      return;
-    }
-    if (speakingMessageId === message.id) {
-      window.speechSynthesis.cancel();
-      setSpeakingMessageId("");
-      return;
-    }
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(stripMarkdown(message.content));
-    utterance.lang = "zh-CN";
-    utterance.onend = () => {
-      setSpeakingMessageId("");
-    };
-    utterance.onerror = () => {
-      setSpeakingMessageId("");
-    };
-    setSpeakingMessageId(message.id);
-    window.speechSynthesis.speak(utterance);
-  }, [speakingMessageId]);
-
   const handleAttachmentPick = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     const nextFiles = files.map((file) => ({
@@ -1956,7 +857,7 @@ export default function App() {
 
   const activeSessionEmpty = activeMessages.length === 0;
   const showAuthCard = runMode === "api" && !apiConnectRequested && !token.trim();
-  const currentShortcut = findShortcut(draft);
+  const currentShortcut = findShortcut(draft, SHORTCUTS);
 
   return (
     <div className="app-shell">
@@ -2172,262 +1073,13 @@ export default function App() {
 
           <div className="message-list" ref={messageListRef}>
             {activeMessages.map((message) => (
-              <article className={message.role === "user" ? "message-row user" : "message-row"} key={message.id}>
-                <div className="avatar">{message.role === "user" ? "我" : "AI"}</div>
-                <div className="bubble-wrap">
-                  <div
-                    className={[
-                      "bubble",
-                      message.status === "streaming" ? "pending" : "",
-                      message.status === "failed" ? "failed" : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                  >
-                    {message.role === "assistant" ? (
-                      <Suspense fallback={<div className="plain-text">{message.content || "生成中..."}</div>}>
-                        <RichMarkdown content={message.content || "生成中..."} />
-                      </Suspense>
-                    ) : (
-                      <div className="plain-text">{message.content}</div>
-                    )}
-                  </div>
-
-                  {/* Route Result Card */}
-                  {message.routeResult ? (
-                    <div className="route-card-v2">
-                      <div className="route-stepper">
-                        <div className="route-step active">
-                          <div className="step-dot"></div>
-                          <span>用户输入</span>
-                        </div>
-                        <div className="route-line"></div>
-                        <div className="route-step active">
-                          <div className="step-dot"></div>
-                          <span>RouteAgent</span>
-                        </div>
-                        <div className="route-line"></div>
-                        <div className="route-step active target">
-                          <div className="step-dot"></div>
-                          <span>{message.routeResult.nextAgent ?? message.routeResult.intent ?? "UNKNOWN"}</span>
-                        </div>
-                      </div>
-                      <div className="route-meta-row">
-                        {message.routeResult.confidence != null ? (
-                          <span className="route-conf-badge">{(message.routeResult.confidence * 100).toFixed(0)}%</span>
-                        ) : null}
-                        {message.routeResult.reason ? <span className="route-reason-text">{message.routeResult.reason}</span> : null}
-                      </div>
-                      <div className="route-tag-row">
-                        {message.routeResult.needRag ? <span className="ev-tag rag">RAG</span> : null}
-                        {message.routeResult.needMemory ? <span className="ev-tag memory">记忆</span> : null}
-                        {message.routeResult.riskLevel ? (
-                          <span className={`ev-tag risk-${(message.routeResult.riskLevel ?? "").toLowerCase()}`}>
-                            {message.routeResult.riskLevel}
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {/* Evidence Items */}
-                  {message.evidence?.length ? (
-                    <div className="evidence-section-v2">
-                      <details open>
-                        <summary className="evidence-toggle">
-                          <span className="ev-tag evidence">📋 证据溯源</span>
-                          <span className="evidence-count">{message.evidence.length} 条</span>
-                        </summary>
-                        <div className="evidence-list-v2">
-                          {message.evidence.map((ev, i) => (
-                            <div className="evidence-item-v2" key={`ev-${message.id}-${i}`}>
-                              <div className="evidence-source-bar">
-                                <span className={`source-type-label ${ev.sourceType ?? ""}`}>{ev.sourceType ?? "?"}</span>
-                                {ev.score != null ? (
-                                  <span className="evidence-score-bar">
-                                    <span className="score-fill" style={{ width: `${ev.score * 100}%` }}></span>
-                                    <span className="score-text">{(ev.score * 100).toFixed(0)}%</span>
-                                  </span>
-                                ) : null}
-                              </div>
-                              {ev.title ? <div className="evidence-title-row">{ev.title}</div> : null}
-                              {ev.reason ? <div className="evidence-reason-row">{ev.reason}</div> : null}
-                            </div>
-                          ))}
-                        </div>
-                      </details>
-                    </div>
-                  ) : null}
-
-                  {/* Memory Hits */}
-                  {message.memoryHits?.length ? (
-                    <div className="memory-section-v2">
-                      <details>
-                        <summary className="memory-toggle">
-                          <span className="ev-tag memory">🧠 记忆命中</span>
-                          <span className="memory-count">{message.memoryHits.length} 条</span>
-                        </summary>
-                        <div className="memory-list-v2">
-                          {message.memoryHits.map((mh, i) => (
-                            <div className="memory-item-v2" key={`mem-${message.id}-${i}`}>
-                              <span className="memory-type-label">{mh.type ?? "short"}</span>
-                              <span className="memory-content-text">{mh.content}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </details>
-                    </div>
-                  ) : null}
-
-                  {message.attachments?.length ? (
-                    <div className="attachment-list">
-                      {message.attachments.map((item) => (
-                        <span className="attachment-chip static" key={item.id}>
-                          {item.name} · {formatBytes(item.size)}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
-
-                  {extractCourseCard(message.params) ? (
-                    <article className="business-card course-card" data-testid="course-card">
-                      {(() => {
-                        const course = extractCourseCard(message.params)!;
-                        return (
-                          <>
-                            <div className="business-card-head course-gradient">
-                              <div className="card-head-left">
-                                <span className="card-type-badge">📚 课程</span>
-                                <strong>{course.name}</strong>
-                              </div>
-                              <div className="card-price-tag">{formatMoney(course.price)}</div>
-                            </div>
-                            <div className="business-card-grid">
-                              <div className="card-field">
-                                <span>适用人群</span>
-                                <strong>{course.usePeople}</strong>
-                              </div>
-                              <div className="card-field">
-                                <span>有效期</span>
-                                <strong>{course.validDuration ? `${course.validDuration} 月` : "长期"}</strong>
-                              </div>
-                              <div className="card-field">
-                                <span>课程 ID</span>
-                                <strong className="mono">{course.id}</strong>
-                              </div>
-                              <div className="card-field cta-field">
-                                <button className="card-cta-btn" type="button">了解详情 →</button>
-                              </div>
-                            </div>
-                            {course.detail ? <p className="card-detail">{course.detail}</p> : null}
-                          </>
-                        );
-                      })()}
-                    </article>
-                  ) : null}
-
-                  {extractOrderCard(message.params) ? (
-                    <article className="business-card order-card" data-testid="order-card">
-                      {(() => {
-                        const order = extractOrderCard(message.params)!;
-                        return (
-                          <>
-                            <div className="business-card-head order-gradient">
-                              <div className="card-head-left">
-                                <span className="card-type-badge">🧾 订单</span>
-                                <strong>订单号 {order.orderId}</strong>
-                              </div>
-                              <div className="card-price-tag accent">{formatMoney(order.payAmount)}</div>
-                            </div>
-                            <div className="business-card-grid">
-                              <div className="card-field">
-                                <span>课程数</span>
-                                <strong>{order.count}</strong>
-                              </div>
-                              <div className="card-field">
-                                <span>原价</span>
-                                <strong>{formatMoney(order.totalAmount)}</strong>
-                              </div>
-                              <div className="card-field">
-                                <span>优惠</span>
-                                <strong className="discount">-{formatMoney(order.discountAmount)}</strong>
-                              </div>
-                              <div className="card-field">
-                                <span>实付</span>
-                                <strong className="pay-amount">{formatMoney(order.payAmount)}</strong>
-                              </div>
-                            </div>
-                            {order.couponName ? <p className="card-detail">🎫 {order.couponName}</p> : null}
-                          </>
-                        );
-                      })()}
-                    </article>
-                  ) : null}
-
-                  {message.toolSummary?.length ? (
-                    <details className="fold-card">
-                      <summary>工具与参数摘要</summary>
-                      <div className="summary-grid">
-                        {message.toolSummary.map((item) => (
-                          <div className="summary-item" key={`${message.id}-${item.label}`}>
-                            <strong>{item.label}</strong>
-                            <span>{item.value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </details>
-                  ) : null}
-
-                  {message.params ? (
-                    <details className="fold-card">
-                      <summary>完整参数</summary>
-                      <pre className="params-block">{JSON.stringify(message.params, null, 2)}</pre>
-                    </details>
-                  ) : null}
-
-                  {message.references?.length ? (
-                    <details className="fold-card">
-                      <summary>引用与说明</summary>
-                      <div className="reference-list">
-                        {message.references.map((reference) => (
-                          <article className="reference-card" key={`${message.id}-${reference.title}`}>
-                            <div className="reference-head">
-                              <strong>{reference.title}</strong>
-                              {reference.tag ? <span>{reference.tag}</span> : null}
-                            </div>
-                            {reference.excerpt ? <p>{reference.excerpt}</p> : null}
-                            {reference.href ? (
-                              <a href={reference.href} rel="noreferrer" target="_blank">
-                                打开链接
-                              </a>
-                            ) : null}
-                          </article>
-                        ))}
-                      </div>
-                    </details>
-                  ) : null}
-
-                  <div className="message-actions">
-                    <button onClick={() => void handleCopyMessage(message.content)} type="button">
-                      复制
-                    </button>
-                    {message.role === "assistant" ? (
-                      <button onClick={() => toggleSpeechPlayback(message)} type="button">
-                        {speakingMessageId === message.id ? "停止朗读" : "朗读"}
-                      </button>
-                    ) : null}
-                    {message.role === "assistant" ? (
-                      <button
-                        disabled={isStreaming || !message.originQuestion}
-                        onClick={() => void handleRetry(message)}
-                        type="button"
-                      >
-                        {message.status === "failed" ? "重试" : "重新生成"}
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-              </article>
+              <MessageBubble
+                key={message.id}
+                message={message}
+                isStreaming={isStreaming}
+                onCopy={handleCopyMessage}
+                onRetry={handleRetry}
+              />
             ))}
           </div>
         </section>
