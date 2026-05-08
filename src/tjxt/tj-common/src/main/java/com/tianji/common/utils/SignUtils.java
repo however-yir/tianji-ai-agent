@@ -67,7 +67,7 @@ public class SignUtils {
         String token = "";
         try {
             // |v1-{AK}-{ExpireTime}|{SK}|
-            StringBuffer sbSign = new StringBuffer(String.format("|%s-%s-%d|%s|", TOKEN_VERSION,
+            StringBuilder sbSign = new StringBuilder(String.format("|%s-%s-%d|%s|", TOKEN_VERSION,
                     accessKey, expireTime, secretKey));
 
             // {UrlPath}|
@@ -91,19 +91,19 @@ public class SignUtils {
             sbSign.append("|");
             log.debug("signature contents: {}", sbSign.toString());
 
-            MessageDigest md5 = MessageDigest.getInstance("MD5");
-            md5.reset();
-            md5.update(sbSign.toString().getBytes("UTF-8"));
+            MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
+            sha256.reset();
+            sha256.update(sbSign.toString().getBytes("UTF-8"));
 
-            //  v2-{AK}-{ExpireTime}-{Signature}
+            //  v1-{AK}-{ExpireTime}-{Signature}
             token = String.format("%s-%s-%s-%s", TOKEN_VERSION, accessKey, expireTime,
-                    new String(HexUtil.encodeHex(md5.digest())));
+                    new String(HexUtil.encodeHex(sha256.digest())));
             log.debug("token generated: version={} accessKey={} expireTime={}", TOKEN_VERSION, accessKey, expireTime);
         } catch (UnsupportedEncodingException e) {
             log.error("failed to decode url or query path");
             throw new RuntimeException("Bad encoded url path or query string");
         } catch (NoSuchAlgorithmException e) {
-            log.error("");
+            log.error("MD5 algorithm not available", e);
         }
 
         return token;
@@ -164,17 +164,17 @@ public class SignUtils {
 
     public static void main(String[] args) {
         String accessKey = "123";
-        String secreatKey = "456";
+        String secretKey = "456";
         String urlPath = "/pay/123456789";
         String method = "GET";
         String params = "";
         Map<String, Object> body = new HashMap<>();
 //        body.put("keyword", "123");
         String token = generateToken(urlPath, method, params, body, System.currentTimeMillis()  + 360000,
-                accessKey, secreatKey);
+                accessKey, secretKey);
         log.info("token : {}", token);
 
-        boolean verifyToken = verifyToken(token, urlPath, method, params, body, accessKey, secreatKey);
+        boolean verifyToken = verifyToken(token, urlPath, method, params, body, accessKey, secretKey);
         log.info("check {}", verifyToken);
 
     }

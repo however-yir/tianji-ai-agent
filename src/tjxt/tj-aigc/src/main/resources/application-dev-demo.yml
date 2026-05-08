@@ -40,7 +40,7 @@ tj:
   ai:
     dev-demo:
       user-id: ${AIGC_DEMO_USER_ID:10001}
-      token: ${AIGC_DEMO_TOKEN:dev-demo-token}
+      token: ${AIGC_DEMO_TOKEN}
       stream-delay-ms: ${AIGC_DEMO_STREAM_DELAY_MS:35}
     session:
       title: 新的对话

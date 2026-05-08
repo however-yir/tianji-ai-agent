@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type {
   AttachmentItem,
   BannerState,
@@ -38,23 +38,16 @@ export type UseStreamingOptions = {
 };
 
 export function useStreaming(options: UseStreamingOptions) {
-  const {
-    setAssistantState,
-    setBanner,
-    setIsStreaming,
-    token,
-    activeSessionId,
-    runMode,
-    sessionMeta,
-    activeTitle,
-    getSessionMessages,
-    upsertApiSessionSummary,
-  } = options;
+  const optionsRef = useRef(options);
+  useEffect(() => {
+    optionsRef.current = options;
+  });
 
   const abortRef = useRef<AbortController | null>(null);
   const currentStreamRef = useRef<{ sessionId: string; messageId: string } | null>(null);
 
   const handleStopStreaming = useCallback(async () => {
+    const { setAssistantState, setIsStreaming, token, activeSessionId, runMode } = optionsRef.current;
     abortRef.current?.abort();
     const currentStream = currentStreamRef.current;
     if (currentStream) {
@@ -72,10 +65,11 @@ export function useStreaming(options: UseStreamingOptions) {
       }
     }
     setIsStreaming(false);
-  }, [activeSessionId, runMode, setAssistantState, setIsStreaming, token]);
+  }, []);
 
   const runDemoStreaming = useCallback(
     async (sessionId: string, messageId: string, question: string, currentAttachments: AttachmentItem[]) => {
+      const { setAssistantState, setBanner, setIsStreaming } = optionsRef.current;
       const controller = new AbortController();
       abortRef.current = controller;
       currentStreamRef.current = { sessionId, messageId };
@@ -117,7 +111,7 @@ export function useStreaming(options: UseStreamingOptions) {
         currentStreamRef.current = null;
       }
     },
-    [setAssistantState, setBanner, setIsStreaming],
+    [],
   );
 
   const runApiStreaming = useCallback(
@@ -127,6 +121,11 @@ export function useStreaming(options: UseStreamingOptions) {
       question: string,
       attachmentIds: string[] = [],
     ) => {
+      const {
+        setAssistantState, setBanner, setIsStreaming,
+        token, sessionMeta, activeTitle,
+        getSessionMessages, upsertApiSessionSummary,
+      } = optionsRef.current;
       const controller = new AbortController();
       abortRef.current = controller;
       currentStreamRef.current = { sessionId, messageId };
@@ -218,7 +217,7 @@ export function useStreaming(options: UseStreamingOptions) {
         });
       }
     },
-    [activeTitle, getSessionMessages, sessionMeta, setAssistantState, setBanner, setIsStreaming, token, upsertApiSessionSummary],
+    [],
   );
 
   return {

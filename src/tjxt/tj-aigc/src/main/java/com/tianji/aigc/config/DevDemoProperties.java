@@ -22,6 +22,14 @@ public class DevDemoProperties {
      */
     private String token;
 
+    public String getToken() {
+        if (token == null || token.isBlank()) {
+            throw new IllegalStateException(
+                    "AIGC_DEMO_TOKEN 未配置，请通过环境变量或 tj.ai.dev-demo.token 注入演示 token。");
+        }
+        return token;
+    }
+
     /**
      * 流式输出时的每段间隔，单位毫秒
      */

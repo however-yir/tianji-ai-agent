@@ -80,7 +80,7 @@ export async function requestJson<T>(
       ...(init.headers as Record<string, string>),
     };
     if (token) {
-      headers.Authorization = token;
+      headers.Authorization = token.startsWith("Bearer ") ? token : `Bearer ${token}`;
     }
     if (init.body && !headers["Content-Type"]) {
       headers["Content-Type"] = "application/json";
@@ -124,7 +124,7 @@ export async function streamChatEvents(
     Accept: "text/event-stream",
   };
   if (token) {
-    headers.Authorization = `Bearer ${token}`;
+    headers.Authorization = token.startsWith("Bearer ") ? token : `Bearer ${token}`;
   }
   const res = await fetch(API_BASE_URL + "/chat", {
     method: "POST",
@@ -178,7 +178,7 @@ export async function uploadAttachments(
   }
   const headers: Record<string, string> = {};
   if (token) {
-    headers.Authorization = `Bearer ${token}`;
+    headers.Authorization = token.startsWith("Bearer ") ? token : `Bearer ${token}`;
   }
   const res = await fetch(API_BASE_URL + "/attachment/upload", {
     method: "POST",
