@@ -55,7 +55,7 @@
         <ali.sdk.kms.version>2.10.1</ali.sdk.kms.version>
         <ali.sdk.oss.version>3.10.2</ali.sdk.oss.version>
         <ali.sdk.pay.version>4.33.12.ALL</ali.sdk.pay.version>
-        <tencent.cloud.version>3.1.515</tencent.cloud.version>
+        <tencent.cloud.version>3.1.1458</tencent.cloud.version>
         <redisson.version>3.13.6</redisson.version>
         <elasticsearch.version>7.12.1</elasticsearch.version>
         <!--<elasticsearch.version>8.13.4</elasticsearch.version>-->
