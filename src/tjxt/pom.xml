@@ -42,7 +42,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <tjxt.version>1.0</tjxt.version>
-        <org.projectlombok.version>1.18.36</org.projectlombok.version>
+        <org.projectlombok.version>1.18.46</org.projectlombok.version>
         <spring-cloud.version>2023.0.3</spring-cloud.version>
         <spring-cloud-alibaba.version>2023.0.3.2</spring-cloud-alibaba.version>
         <spring-ai.version>1.0.0-M6</spring-ai.version>
