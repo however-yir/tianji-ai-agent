@@ -1,8 +1,8 @@
-# tianji-ai-agent · 天机学堂智能客服系统
+# tianji-ai-agent · 业务 Agent 案例：CloudAgent 智能客服
 
-> **CloudAgent Intelligent Customer Service** — 基于 Spring AI 的多智能体课程客服系统。通过 RouteAgent 意图识别 + 9 种子 Agent 协作 + Tool Calling + SSE 全链路事件流，实现从课程推荐、售前咨询、预下单到售后投诉、转人工的完整业务闭环。
+> **Business Agent Showcase** — 这不是一个框架 Demo，而是一个 **可运行的业务 Agent 工程案例**：围绕在线课程客服场景，展示如何用 Spring AI 多智能体架构完成从意图识别、课程推荐、预下单到售后转人工的完整业务闭环。
 
-课程业务 Agent 工程案例：用户提问 -> RouteAgent 意图识别 -> Recommend/Buy/Consult/Knowledge 子 Agent -> Tool Calling -> SSE 流式返回 -> 前端卡片展示。
+用户提问 -> RouteAgent 意图识别 -> 9 种子 Agent 分发 -> Tool Calling 调用课程/订单微服务 -> SSE 流式返回 -> 前端课程/订单卡片渲染。
 
 [![CI](https://github.com/however-yir/tianji-ai-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/however-yir/tianji-ai-agent/actions/workflows/ci.yml)
 [![Java](https://img.shields.io/badge/Java-17-007396?logo=openjdk)](https://openjdk.org/)
