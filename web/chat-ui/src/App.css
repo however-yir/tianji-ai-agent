@@ -1549,3 +1549,51 @@ strong.pay-amount {
   transform: translateY(-1px);
   box-shadow: 0 6px 16px rgba(99, 102, 241, 0.2);
 }
+
+/* ---------- Model config section ---------- */
+
+.model-config-section {
+  margin-top: 8px;
+}
+
+.model-config-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.config-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: var(--sidebar-text);
+}
+
+.config-label select,
+.config-label input[type="range"] {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--sidebar-text);
+  font-size: 0.82rem;
+}
+
+.config-label select {
+  cursor: pointer;
+}
+
+.config-label select:focus,
+.config-label input[type="range"]:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.config-label input[type="range"] {
+  padding: 0;
+  height: 6px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}

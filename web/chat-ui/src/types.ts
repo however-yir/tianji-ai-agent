@@ -3,6 +3,27 @@ export type MessageRole = "user" | "assistant";
 export type MessageStatus = "done" | "streaming" | "failed";
 export type BannerTone = "info" | "warning" | "error";
 
+// ---------- Model provider configuration ----------
+
+export type ModelOption = {
+  name: string;
+  label: string;
+};
+
+export type ProviderConfig = {
+  label: string;
+  defaultModel: string;
+  models: ModelOption[];
+};
+
+export type ProvidersResponse = {
+  defaultProvider: string;
+  defaultTemperature: number;
+  providers: Record<string, ProviderConfig>;
+};
+
+// --------------------------------------------------
+
 export type AttachmentItem = {
   id: string;
   name: string;

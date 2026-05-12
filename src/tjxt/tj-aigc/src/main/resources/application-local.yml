@@ -10,6 +10,32 @@ spring:
         enabled: ${AIGC_OPENAI_CHAT_ENABLED:false}
       embedding:
         enabled: ${AIGC_OPENAI_EMBEDDING_ENABLED:false}
+tj:
+  ai:
+    model:
+      default-provider: dashscope
+      default-temperature: 0.7
+      providers:
+        dashscope:
+          label: 阿里云百炼
+          default-model: qwen-plus
+          models:
+            - name: qwen-plus
+              label: Qwen-Plus
+            - name: qwen-max
+              label: Qwen-Max
+            - name: qwen-turbo
+              label: Qwen-Turbo
+        openai:
+          label: OpenAI
+          default-model: gpt-4o
+          models:
+            - name: gpt-4o
+              label: GPT-4o
+            - name: gpt-4o-mini
+              label: GPT-4o Mini
+            - name: gpt-3.5-turbo
+              label: GPT-3.5 Turbo
   datasource:
     url: ${AIGC_DATASOURCE_URL:jdbc:mysql://127.0.0.1:3306/tj_aigc?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false}
     username: ${AIGC_DATASOURCE_USERNAME:root}

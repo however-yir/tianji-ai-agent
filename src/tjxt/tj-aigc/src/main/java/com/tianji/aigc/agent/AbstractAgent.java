@@ -3,8 +3,11 @@ package com.tianji.aigc.agent;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
+import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.tianji.aigc.attachment.AttachmentContext;
 import com.tianji.aigc.attachment.AttachmentContextHolder;
+import com.tianji.aigc.config.ModelOptionsHolder;
+import com.tianji.aigc.config.ModelOptionsHolder.ModelOptions;
 import com.tianji.aigc.config.ToolResultHolder;
 import com.tianji.aigc.constants.Constant;
 import com.tianji.aigc.enums.ChatEventTypeEnum;
@@ -19,6 +22,7 @@ import org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;
@@ -32,6 +36,8 @@ public abstract class AbstractAgent implements Agent {
 
     @Resource
     private ChatClient dashScopeChatClient;
+    @Resource
+    private ChatClient openAiChatClient;
     @Resource
     private ChatSessionService chatSessionService;
     @Resource
@@ -165,12 +171,50 @@ public abstract class AbstractAgent implements Agent {
         }
         advisors.addAll(this.advisors(question));
 
-        return this.dashScopeChatClient.prompt()
+        ChatClient client = resolveChatClient();
+        ChatClient.ChatClientRequestSpec request = client.prompt()
                 .system(promptSystem -> promptSystem.text(this.resolveSystemMessage(sessionId)).params(this.systemMessageParams()))
                 .advisors(advisor -> advisor.advisors(advisors).params(this.advisorParams(sessionId, requestId)))
                 .tools(this.tools())
                 .toolContext(this.toolContext(sessionId, requestId))
                 .user(question);
+
+        applyChatOptions(request);
+        return request;
+    }
+
+    /**
+     * 根据 ModelOptionsHolder 中的 provider 选择对应的 ChatClient。
+     * 默认使用 dashScopeChatClient。
+     */
+    private ChatClient resolveChatClient() {
+        ModelOptions options = ModelOptionsHolder.get();
+        if (options != null && options.hasProvider() && "openai".equalsIgnoreCase(options.provider())) {
+            return this.openAiChatClient;
+        }
+        return this.dashScopeChatClient;
+    }
+
+    /**
+     * 从 ModelOptionsHolder 读取 model 和 temperature，构建对应的 ChatOptions 并应用到请求。
+     */
+    private void applyChatOptions(ChatClient.ChatClientRequestSpec request) {
+        ModelOptions options = ModelOptionsHolder.get();
+        if (options == null) return;
+
+        String provider = options.hasProvider() ? options.provider() : "dashscope";
+
+        if ("openai".equalsIgnoreCase(provider)) {
+            OpenAiChatOptions oaiOptions = new OpenAiChatOptions();
+            if (options.hasModel()) oaiOptions.setModel(options.model());
+            if (options.hasTemperature()) oaiOptions.setTemperature(options.temperature());
+            request.options(oaiOptions);
+        } else {
+            DashScopeChatOptions dsOptions = new DashScopeChatOptions();
+            if (options.hasModel()) dsOptions.setModel(options.model());
+            if (options.hasTemperature()) dsOptions.setTemperature(options.temperature());
+            request.options(dsOptions);
+        }
     }
 
     protected boolean useAttachmentContext() {

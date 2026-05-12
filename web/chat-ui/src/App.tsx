@@ -17,6 +17,8 @@ import type {
   DemoStore,
   HistoryApiItem,
   MessageApiItem,
+  ModelOption,
+  ProvidersResponse,
   RunMode,
   SessionApiResponse,
   SessionMeta,
@@ -140,6 +142,10 @@ export default function App() {
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [voiceListening, setVoiceListening] = useState(false);
   const [speechError, setSpeechError] = useState("");
+  const [providersConfig, setProvidersConfig] = useState<ProvidersResponse | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState("");
+  const [selectedModel, setSelectedModel] = useState("");
+  const [temperature, setTemperature] = useState(0.7);
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const messageListRef = useRef<HTMLDivElement | null>(null);
@@ -627,6 +633,9 @@ export default function App() {
     activeTitle: activeTitle || "新的对话",
     getSessionMessages,
     upsertApiSessionSummary,
+    selectedProvider,
+    selectedModel,
+    temperature,
   });
 
   const appendMessages = useCallback(
@@ -850,10 +859,24 @@ export default function App() {
     setApiConnectRequested(false);
   }, [activeSessionId, demoSessions]);
 
-  const connectApi = useCallback(() => {
+  const connectApi = useCallback(async () => {
     setApiConnectRequested(true);
     setBanner(createBanner("info", "正在尝试连接真实 API..."));
-  }, []);
+    try {
+      const config = await requestJson<ProvidersResponse>("/chat/providers", { method: "GET" }, token);
+      setProvidersConfig(config);
+      if (config && !selectedProvider) {
+        setSelectedProvider(config.defaultProvider);
+        const defaultProviderCfg = config.providers[config.defaultProvider];
+        if (defaultProviderCfg) {
+          setSelectedModel(defaultProviderCfg.defaultModel);
+        }
+        setTemperature(config.defaultTemperature);
+      }
+    } catch {
+      // providers endpoint is optional; silently ignore
+    }
+  }, [token, selectedProvider]);
 
   const activeSessionEmpty = activeMessages.length === 0;
   const showAuthCard = runMode === "api" && !apiConnectRequested && !token.trim();
@@ -897,6 +920,56 @@ export default function App() {
               : "切换到真实 API 后，会走 `/session`、`/chat` 和 `/chat/stop` 接口。"}
           </p>
         </section>
+
+        {runMode === "api" && providersConfig ? (
+          <section className="sidebar-group model-config-section">
+            <div className="group-title-row">
+              <h2>模型设置</h2>
+            </div>
+            <div className="model-config-inner">
+              <label className="config-label">
+                供应商
+                <select
+                  value={selectedProvider}
+                  onChange={(e) => {
+                    const provider = e.target.value;
+                    setSelectedProvider(provider);
+                    const cfg = providersConfig.providers[provider];
+                    if (cfg) setSelectedModel(cfg.defaultModel);
+                  }}
+                >
+                  {Object.entries(providersConfig.providers).map(([key, cfg]) => (
+                    <option key={key} value={key}>{cfg.label}</option>
+                  ))}
+                </select>
+              </label>
+              {providersConfig.providers[selectedProvider] ? (
+                <label className="config-label">
+                  模型
+                  <select
+                    value={selectedModel}
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                  >
+                    {providersConfig.providers[selectedProvider].models.map((m: ModelOption) => (
+                      <option key={m.name} value={m.name}>{m.label}</option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              <label className="config-label">
+                温度 · {temperature.toFixed(1)}
+                <input
+                  type="range"
+                  min="0"
+                  max="2"
+                  step="0.1"
+                  value={temperature}
+                  onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                />
+              </label>
+            </div>
+          </section>
+        ) : null}
 
         <button className="new-chat-btn" onClick={() => void createNewSession()} type="button">
           + 新建对话

@@ -26,4 +26,19 @@ public class ChatDTO {
      * 已上传附件id列表
      */
     private List<String> attachmentIds;
+
+    /**
+     * 模型供应商：dashscope / openai
+     */
+    private String provider;
+
+    /**
+     * 模型名称，如 qwen-plus / gpt-4o
+     */
+    private String model;
+
+    /**
+     * 温度参数，范围 0.0 ~ 2.0，控制输出随机性
+     */
+    private Double temperature;
 }

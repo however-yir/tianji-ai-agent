@@ -4,6 +4,9 @@ import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
+import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
+import com.tianji.aigc.config.ModelOptionsHolder;
+import com.tianji.aigc.config.ModelOptionsHolder.ModelOptions;
 import com.tianji.aigc.config.SystemPromptConfig;
 import com.tianji.aigc.config.ToolResultHolder;
 import com.tianji.aigc.constants.Constant;
@@ -18,6 +21,7 @@ import org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
@@ -34,6 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ChatServiceImpl implements ChatService {
 
     private final ChatClient dashScopeChatClient;
+    private final ChatClient openAiChatClient;
     private final SystemPromptConfig systemPromptConfig;
     private final ChatMemory chatMemory;
     private final VectorStore vectorStore;
@@ -57,7 +62,9 @@ public class ChatServiceImpl implements ChatService {
         String conversationId = ChatService.getConversationId(sessionId);
         // 收集大模型生成的内容，用于停止生成时，保存数据到redis中
         StringBuilder textBuilder = new StringBuilder();
-        return this.dashScopeChatClient.prompt()
+
+        ChatClient client = resolveChatClient();
+        ChatClient.ChatClientRequestSpec requestSpec = client.prompt()
                 .system(promptSystem -> promptSystem
                         .text(systemPromptConfig.getChatSystemMessage().get()) // 系统提示词
                         .param("now", DateUtil.now()) //系统当前时间
@@ -70,8 +77,10 @@ public class ChatServiceImpl implements ChatService {
                                 .build()))
                         .param(AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY, conversationId))
                 .toolContext(Map.of(Constant.REQUEST_ID, requestId, Constant.USER_ID, userId)) //在工具上下文中传递请求id
-                .user(question)
-                .stream()
+                .user(question);
+
+        applyChatOptions(requestSpec);
+        return requestSpec.stream()
                 .chatResponse()
                 .doFirst(() -> GENERATE_STATUS.put(sessionId, true)) // 生成开始时，标记为正在输出
                 .doOnComplete(() -> GENERATE_STATUS.remove(sessionId)) // 生成结束后，将标识移除
@@ -129,5 +138,32 @@ public class ChatServiceImpl implements ChatService {
      */
     private void saveStopHistoryRecord(String conversationId, String content) {
         this.chatMemory.add(conversationId, new AssistantMessage(content));
+    }
+
+    private ChatClient resolveChatClient() {
+        ModelOptions options = ModelOptionsHolder.get();
+        if (options != null && options.hasProvider() && "openai".equalsIgnoreCase(options.provider())) {
+            return this.openAiChatClient;
+        }
+        return this.dashScopeChatClient;
+    }
+
+    private void applyChatOptions(ChatClient.ChatClientRequestSpec requestSpec) {
+        ModelOptions options = ModelOptionsHolder.get();
+        if (options == null) return;
+
+        String provider = options.hasProvider() ? options.provider() : "dashscope";
+
+        if ("openai".equalsIgnoreCase(provider)) {
+            OpenAiChatOptions oaiOptions = new OpenAiChatOptions();
+            if (options.hasModel()) oaiOptions.setModel(options.model());
+            if (options.hasTemperature()) oaiOptions.setTemperature(options.temperature());
+            requestSpec.options(oaiOptions);
+        } else {
+            DashScopeChatOptions dsOptions = new DashScopeChatOptions();
+            if (options.hasModel()) dsOptions.setModel(options.model());
+            if (options.hasTemperature()) dsOptions.setTemperature(options.temperature());
+            requestSpec.options(dsOptions);
+        }
     }
 }
