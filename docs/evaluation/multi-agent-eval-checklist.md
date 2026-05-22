@@ -6,9 +6,16 @@
 - [ ] 子任务失败可回滚或重试
 
 ## 2. 路由与工具调用
-- [x] RouteAgent 路由准确率 >= 85%（见 `route-agent-dataset.jsonl` 与 `scripts/evaluation/evaluate_route_agent.py`）
+- [x] RouteAgent 路由准确率 >= 85%（见 `route-agent-dataset.jsonl`，可用 `scripts/evaluation/evaluate_route_agent.py` 或 `scripts/evaluation/evaluate_route_predictions.py` 复现）
 - [ ] 工具调用成功率 >= 95%
 - [ ] 工具失败时可自动降级
+
+```bash
+python3 scripts/evaluation/evaluate_route_predictions.py \
+  --dataset docs/evaluation/route-agent-dataset.jsonl \
+  --predictions docs/evaluation/route-agent-predictions.sample.jsonl \
+  --min-accuracy 0.85
+```
 
 ## 3. 状态与可观测性
 - [ ] 每个任务具备 `task_id`

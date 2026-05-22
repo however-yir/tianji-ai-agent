@@ -1,0 +1,24 @@
+{"id":"route-001","predicted_agent":"RECOMMEND","confidence":0.92,"route_reason":"用户明确要求课程推荐"}
+{"id":"route-002","predicted_agent":"RECOMMEND","confidence":0.90,"route_reason":"用户询问 AI 入门课程推荐"}
+{"id":"route-003","predicted_agent":"RECOMMEND","confidence":0.89,"route_reason":"用户有前端基础并要求选课"}
+{"id":"route-004","predicted_agent":"CONSULT","confidence":0.88,"route_reason":"用户询问课程适合人群和价格"}
+{"id":"route-005","predicted_agent":"CONSULT","confidence":0.87,"route_reason":"用户询问课程有效期"}
+{"id":"route-006","predicted_agent":"CONSULT","confidence":0.86,"route_reason":"用户询问课程项目实战内容"}
+{"id":"route-007","predicted_agent":"BUY","confidence":0.91,"route_reason":"用户要求生成确认订单"}
+{"id":"route-008","predicted_agent":"BUY","confidence":0.90,"route_reason":"用户要求预下单和优惠金额"}
+{"id":"route-009","predicted_agent":"BUY","confidence":0.90,"route_reason":"用户要求创建订单预览"}
+{"id":"route-010","predicted_agent":"KNOWLEDGE","confidence":0.86,"route_reason":"用户询问通用技术知识"}
+{"id":"route-011","predicted_agent":"KNOWLEDGE","confidence":0.86,"route_reason":"用户询问 JVM 技术知识"}
+{"id":"route-012","predicted_agent":"KNOWLEDGE","confidence":0.85,"route_reason":"用户询问 Spring Boot 技术知识"}
+{"id":"route-013","predicted_agent":"AFTER_SALE","confidence":0.84,"route_reason":"用户询问购买后的发票问题"}
+{"id":"route-014","predicted_agent":"AFTER_SALE","confidence":0.84,"route_reason":"用户描述课程视频无法播放"}
+{"id":"route-015","predicted_agent":"AFTER_SALE","confidence":0.83,"route_reason":"用户询问退款流程"}
+{"id":"route-016","predicted_agent":"HUMAN_HANDOFF","confidence":0.93,"route_reason":"投诉课程质量需要人工介入"}
+{"id":"route-017","predicted_agent":"HUMAN_HANDOFF","confidence":0.93,"route_reason":"举报和差评为高风险服务请求"}
+{"id":"route-018","predicted_agent":"HUMAN_HANDOFF","confidence":0.92,"route_reason":"维权和被骗表述需要人工介入"}
+{"id":"route-019","predicted_agent":"STUDY_PLAN","confidence":0.89,"route_reason":"用户要求学习路径规划"}
+{"id":"route-020","predicted_agent":"STUDY_PLAN","confidence":0.88,"route_reason":"用户要求周末学习计划"}
+{"id":"route-021","predicted_agent":"STUDY_PLAN","confidence":0.88,"route_reason":"用户要求分阶段面试规划"}
+{"id":"route-022","predicted_agent":"HUMAN_HANDOFF","confidence":0.93,"route_reason":"用户明确要求转人工客服"}
+{"id":"route-023","predicted_agent":"HUMAN_HANDOFF","confidence":0.94,"route_reason":"支付失败且已扣款需要人工确认"}
+{"id":"route-024","predicted_agent":"HUMAN_HANDOFF","confidence":0.94,"route_reason":"验证码和订单状态异常需要真人客服"}
