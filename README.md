@@ -1,5 +1,7 @@
 # tianji-ai-agent · 业务 Agent 案例：CloudAgent 智能客服
 
+> **Matrix role:** `tianji-ai-agent` is the business Agent case study: intent routing, tool calling, SSE cards, MCP, and course-service workflows on top of the platform capabilities provided by [`knowledgeops-agent`](https://github.com/however-yir/knowledgeops-agent).
+>
 > **Business Agent Showcase** — 这不是一个框架 Demo，而是一个 **可运行的业务 Agent 工程案例**：围绕在线课程客服场景，展示如何用 Spring AI 多智能体架构完成从意图识别、课程推荐、预下单到售后转人工的完整业务闭环。
 
 用户提问 -> RouteAgent 意图识别 -> 9 种子 Agent 分发 -> Tool Calling 调用课程/订单微服务 -> SSE 流式返回 -> 前端课程/订单卡片渲染。
