@@ -117,6 +117,16 @@ export function buildDemoReply(question: string, attachments: AttachmentItem[]):
           detail: "覆盖 Java 基础、Spring Boot、Redis、项目实战和面试表达。",
         },
       },
+      routeResult: {
+        intent: "RECOMMEND",
+        confidence: 0.92,
+        routeReason: "用户给出目标、基础和周期，适合进入课程推荐",
+        nextAgent: "RECOMMEND",
+        candidateAgents: ["RECOMMEND", "STUDY_PLAN", "CONSULT"],
+        needRag: true,
+        needMemory: true,
+        riskLevel: "LOW",
+      },
       references: [
         {
           title: "RouteAgent 命中推荐场景",
@@ -146,6 +156,16 @@ export function buildDemoReply(question: string, attachments: AttachmentItem[]):
           detail: "以课程详情查询为核心，适合展示 ConsultAgent + CourseTools 链路。",
         },
       },
+      routeResult: {
+        intent: "CONSULT",
+        confidence: 0.89,
+        routeReason: "用户询问课程适用人群和价格，进入课程咨询",
+        nextAgent: "CONSULT",
+        candidateAgents: ["CONSULT", "RECOMMEND", "BUY"],
+        needRag: true,
+        needMemory: false,
+        riskLevel: "LOW",
+      },
     };
   }
 
@@ -168,7 +188,20 @@ export function buildDemoReply(question: string, attachments: AttachmentItem[]):
           courseIds: ["1589905661084430337"],
           orderId: 202604290001,
           couponId: 9001,
+          businessState: "USER_CONFIRM_REQUIRED",
+          stateTrace: ["COURSE_SELECTED", "ORDER_PREVIEW", "USER_CONFIRM_REQUIRED"],
+          nextAction: "等待用户确认订单；支付异常或敏感问题进入 HANDOFF_OR_DONE",
         },
+      },
+      routeResult: {
+        intent: "BUY",
+        confidence: 0.91,
+        routeReason: "用户明确要求购买并生成确认订单，进入预下单状态机",
+        nextAgent: "BUY",
+        candidateAgents: ["BUY", "CONSULT", "HUMAN_HANDOFF"],
+        needRag: false,
+        needMemory: true,
+        riskLevel: "LOW",
       },
       references: [
         {
@@ -197,6 +230,16 @@ export function buildDemoReply(question: string, attachments: AttachmentItem[]):
         mode: "demo",
         route: "KNOWLEDGE",
         topic: "Redis 缓存穿透",
+      },
+      routeResult: {
+        intent: "KNOWLEDGE",
+        confidence: 0.88,
+        routeReason: "用户询问通用技术概念，进入知识问答",
+        nextAgent: "KNOWLEDGE",
+        candidateAgents: ["KNOWLEDGE", "CONSULT", "RECOMMEND"],
+        needRag: true,
+        needMemory: false,
+        riskLevel: "LOW",
       },
     };
   }

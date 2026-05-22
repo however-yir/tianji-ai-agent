@@ -6,7 +6,7 @@
 - [ ] 子任务失败可回滚或重试
 
 ## 2. 路由与工具调用
-- [ ] RouteAgent 路由准确率 >= 85%
+- [x] RouteAgent 路由准确率 >= 85%（见 `route-agent-dataset.jsonl` 与 `scripts/evaluation/evaluate_route_agent.py`）
 - [ ] 工具调用成功率 >= 95%
 - [ ] 工具失败时可自动降级
 
@@ -21,6 +21,6 @@
 - [ ] 输出结果具备可解释性
 
 ## 5. 回归验证
-- [ ] 增加标准评测样本（至少 50 条）
+- [ ] 增加标准评测样本（当前 RouteAgent JSONL 24 条，后续扩到至少 50 条）
 - [ ] nightly 回归执行
 - [ ] 回归结果按版本归档

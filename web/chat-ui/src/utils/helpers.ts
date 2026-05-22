@@ -114,7 +114,8 @@ export function asRecord(value: unknown): Record<string, unknown> | null {
 
 export function extractCourseCard(params: Record<string, unknown> | null): CourseCardData | null {
   if (!params) return null;
-  const raw = params.course ?? params.courseCard ?? params.courseInfo;
+  const dynamicCourseKey = Object.keys(params).find((key) => key.startsWith("courseInfo_"));
+  const raw = params.course ?? params.courseCard ?? params.courseInfo ?? (dynamicCourseKey ? params[dynamicCourseKey] : undefined);
   const record = asRecord(raw);
   if (!record) return null;
   const id = String(record.id ?? record.courseId ?? "");
@@ -132,7 +133,7 @@ export function extractCourseCard(params: Record<string, unknown> | null): Cours
 
 export function extractOrderCard(params: Record<string, unknown> | null): OrderCardData | null {
   if (!params) return null;
-  const raw = params.order ?? params.orderCard ?? params.orderInfo;
+  const raw = params.order ?? params.orderCard ?? params.orderInfo ?? params.prePlaceOrder;
   const record = asRecord(raw);
   if (!record) return null;
   const orderId = String(record.orderId ?? record.id ?? "");
@@ -144,6 +145,9 @@ export function extractOrderCard(params: Record<string, unknown> | null): OrderC
     discountAmount: Number(record.discountAmount ?? 0),
     payAmount: Number(record.payAmount ?? record.totalAmount ?? 0),
     couponName: record.couponName != null ? String(record.couponName) : undefined,
+    businessState: record.businessState != null ? String(record.businessState) : undefined,
+    stateTrace: Array.isArray(record.stateTrace) ? record.stateTrace.map(String) : undefined,
+    nextAction: record.nextAction != null ? String(record.nextAction) : undefined,
   };
 }
 

@@ -94,7 +94,15 @@ class AgentConfigurationTest {
         BuyAgent buyAgent = new BuyAgent(systemPromptConfig, orderTools);
 
         assertThat(buyAgent.getAgentType()).isEqualTo(AgentTypeEnum.BUY);
-        assertThat(buyAgent.systemMessage()).isEqualTo("buy prompt");
+        assertThat(buyAgent.systemMessage())
+                .contains("buy prompt")
+                .contains("COURSE_SELECTED -> ORDER_PREVIEW -> USER_CONFIRM_REQUIRED -> HANDOFF_OR_DONE");
+        assertThat(buyAgent.stateMachine()).containsExactly(
+                "COURSE_SELECTED",
+                "ORDER_PREVIEW",
+                "USER_CONFIRM_REQUIRED",
+                "HANDOFF_OR_DONE"
+        );
         assertThat(buyAgent.tools()).containsExactly(orderTools);
         assertThat(buyAgent.toolContext("session-1", "request-1"))
                 .containsEntry(Constant.USER_ID, 10003L)
