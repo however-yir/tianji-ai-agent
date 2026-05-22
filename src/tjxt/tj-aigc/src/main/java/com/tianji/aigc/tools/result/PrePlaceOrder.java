@@ -46,6 +46,15 @@ public class PrePlaceOrder {
     @JsonPropertyDescription("优惠券id")
     private Long couponId;
 
+    @JsonPropertyDescription("购买业务状态，预下单后必须等待用户确认")
+    private String businessState;
+
+    @JsonPropertyDescription("购买状态流转轨迹")
+    private List<String> stateTrace;
+
+    @JsonPropertyDescription("下一步动作")
+    private String nextAction;
+
     public static PrePlaceOrder of(OrderConfirmVO orderConfirmVO) {
         // 订单总金额
         double totalAmount = Optional.ofNullable(orderConfirmVO.getTotalAmount())
@@ -92,6 +101,9 @@ public class PrePlaceOrder {
                 .courseIds(courseIds)
                 .orderId(orderConfirmVO.getOrderId())
                 .couponId(couponId)
+                .businessState("USER_CONFIRM_REQUIRED")
+                .stateTrace(List.of("COURSE_SELECTED", "ORDER_PREVIEW", "USER_CONFIRM_REQUIRED"))
+                .nextAction("等待用户确认订单；支付异常或敏感问题进入 HANDOFF_OR_DONE")
                 .build();
     }
 }

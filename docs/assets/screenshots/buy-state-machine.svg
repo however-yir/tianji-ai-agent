@@ -1,0 +1,35 @@
+<svg width="1200" height="720" viewBox="0 0 1200 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="720" fill="#F5F7FB"/>
+  <text x="72" y="78" fill="#132A58" font-family="Arial, sans-serif" font-size="34" font-weight="700">BuyAgent 业务状态机</text>
+  <text x="72" y="116" fill="#52617C" font-family="Arial, sans-serif" font-size="18">只做预下单和确认，不直接完成支付；敏感支付问题进入人工兜底。</text>
+  <g transform="translate(72 190)">
+    <rect width="230" height="116" rx="12" fill="#EAF2FF" stroke="#BED0EE" stroke-width="2"/>
+    <text x="24" y="48" fill="#1D427F" font-family="SFMono-Regular, Menlo, monospace" font-size="20" font-weight="700">COURSE_SELECTED</text>
+    <text x="24" y="82" fill="#52617C" font-family="Arial, sans-serif" font-size="16">确认课程 ID / 课程选择</text>
+  </g>
+  <path d="M326 248 H414" stroke="#6383BE" stroke-width="4" stroke-linecap="round"/>
+  <path d="M414 248 L398 238 V258 L414 248Z" fill="#6383BE"/>
+  <g transform="translate(438 190)">
+    <rect width="230" height="116" rx="12" fill="#FFF7ED" stroke="#F0D9B5" stroke-width="2"/>
+    <text x="24" y="48" fill="#9A5A0B" font-family="SFMono-Regular, Menlo, monospace" font-size="20" font-weight="700">ORDER_PREVIEW</text>
+    <text x="24" y="82" fill="#7C5A2A" font-family="Arial, sans-serif" font-size="16">调用 OrderTools 预下单</text>
+  </g>
+  <path d="M692 248 H780" stroke="#6383BE" stroke-width="4" stroke-linecap="round"/>
+  <path d="M780 248 L764 238 V258 L780 248Z" fill="#6383BE"/>
+  <g transform="translate(804 190)">
+    <rect width="300" height="116" rx="12" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="2"/>
+    <text x="24" y="48" fill="#047857" font-family="SFMono-Regular, Menlo, monospace" font-size="20" font-weight="700">USER_CONFIRM_REQUIRED</text>
+    <text x="24" y="82" fill="#065F46" font-family="Arial, sans-serif" font-size="16">前端展示订单卡，等待用户确认</text>
+  </g>
+  <path d="M954 330 V412" stroke="#6383BE" stroke-width="4" stroke-linecap="round"/>
+  <path d="M954 412 L944 396 H964 L954 412Z" fill="#6383BE"/>
+  <g transform="translate(804 438)">
+    <rect width="300" height="116" rx="12" fill="#FEF2F2" stroke="#FECACA" stroke-width="2"/>
+    <text x="24" y="48" fill="#991B1B" font-family="SFMono-Regular, Menlo, monospace" font-size="20" font-weight="700">HANDOFF_OR_DONE</text>
+    <text x="24" y="82" fill="#7F1D1D" font-family="Arial, sans-serif" font-size="16">支付敏感 / 低置信度 / 投诉转人工</text>
+  </g>
+  <rect x="72" y="438" width="620" height="116" rx="12" fill="#FFFFFF" stroke="#D5E0F2"/>
+  <text x="100" y="482" fill="#132A58" font-family="Arial, sans-serif" font-size="22" font-weight="700">SSE PARAM 订单卡字段</text>
+  <text x="100" y="520" fill="#52617C" font-family="SFMono-Regular, Menlo, monospace" font-size="17">businessState: USER_CONFIRM_REQUIRED</text>
+  <text x="100" y="552" fill="#52617C" font-family="SFMono-Regular, Menlo, monospace" font-size="17">stateTrace: COURSE_SELECTED -&gt; ORDER_PREVIEW -&gt; USER_CONFIRM_REQUIRED</text>
+</svg>

@@ -60,6 +60,9 @@ class OrderToolsTest {
         assertThat(result.getDiscountAmount()).isEqualTo(20.0);
         assertThat(result.getPayAmount()).isEqualTo(179.0);
         assertThat(result.getCourseIds()).containsExactly(1589905661084430337L);
+        assertThat(result.getBusinessState()).isEqualTo("USER_CONFIRM_REQUIRED");
+        assertThat(result.getStateTrace()).containsExactly("COURSE_SELECTED", "ORDER_PREVIEW", "USER_CONFIRM_REQUIRED");
+        assertThat(result.getNextAction()).contains("HANDOFF_OR_DONE");
         assertThat(ToolResultHolder.get("request-1", "prePlaceOrder")).isEqualTo(result);
         assertThat(UserContext.getUser()).isEqualTo(10001L);
         verify(tradeClient).prePlaceOrder(List.of(1589905661084430337L));

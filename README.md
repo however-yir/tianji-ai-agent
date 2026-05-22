@@ -26,10 +26,10 @@
 
 1. 用户在聊天前端输入课程咨询、推荐或购买问题。
 2. `tj-aigc` 接收 `/chat` 请求，建立会话上下文和附件上下文。
-3. `RouteAgent` 判断意图（结构化 JSON：intent/confidence/nextAgent/needRag/needMemory/riskLevel），路由到 9 种子 Agent。
+3. `RouteAgent` 判断意图（结构化 JSON：intent/confidence/routeReason/candidateAgents/nextAgent/needRag/needMemory/riskLevel），路由到 9 种子 Agent；投诉、低置信度和支付敏感问题统一兜底到 `HUMAN_HANDOFF`。
 4. 子 Agent 通过 `CourseTools`、`OrderTools` 调用课程和交易微服务，通过 `KnowledgeOpsClient` 调用平台 RAG/记忆/图谱。
 5. `ToolResultHolder` 把工具结果转成 `PARAM` 事件，和模型文本一起通过 SSE 返回。
-6. 前端消费 `ROUTE / DATA / TRACE / EVIDENCE / MEMORY / PARAM / STOP` 事件，渲染路由链路、课程卡片、订单卡片、引用来源、记忆命中和停止生成状态。
+6. 前端消费 `ROUTE / DATA / TRACE / EVIDENCE / MEMORY / PARAM / STOP` 事件，渲染路由链路、课程卡片、订单卡片、route trace、引用来源、记忆命中和停止生成状态。
 
 **可用 Agent 类型：** `ROUTE` | `RECOMMEND` | `CONSULT` | `BUY` | `KNOWLEDGE` | `AFTER_SALE` | `COMPLAINT` | `STUDY_PLAN` | `HUMAN_HANDOFF`
 
@@ -94,6 +94,10 @@ sequenceDiagram
 | 购买课程 | 语音入口 |
 |---|---|
 | ![购买课程卡片](docs/assets/screenshots/order-card.jpg) | ![语音入口](docs/assets/screenshots/voice-entry.jpg) |
+
+| 路由准确率 | 业务状态机 |
+|---|---|
+| ![路由准确率评测](docs/assets/screenshots/route-accuracy.svg) | ![BuyAgent 业务状态机](docs/assets/screenshots/buy-state-machine.svg) |
 
 ## 项目结构
 
@@ -168,7 +172,7 @@ sequenceDiagram
 | `RouteAgent` | 意图识别，只做路由，不使用附件上下文 |
 | `RecommendAgent` | 课程推荐，绑定 `CourseTools` 与 RAG Advisor |
 | `ConsultAgent` | 课程咨询，查询课程详情和补充解释 |
-| `BuyAgent` | 购买链路，绑定 `OrderTools` 做预下单 |
+| `BuyAgent` | 购买链路，绑定 `OrderTools` 做预下单，状态机为 `COURSE_SELECTED -> ORDER_PREVIEW -> USER_CONFIRM_REQUIRED -> HANDOFF_OR_DONE` |
 | `KnowledgeAgent` | 通用知识讲解，不强依赖业务工具 |
 | `CourseTools` | 调课程微服务，返回 `CourseInfo` |
 | `OrderTools` | 调交易微服务，返回 `PrePlaceOrder` |
@@ -232,6 +236,14 @@ npm run build
 mvn -B -ntp -f src/tjxt/pom.xml -pl tj-aigc -am -DskipTests package
 mvn -B -ntp -f src/tjxt/tj-aigc/pom.xml test
 ```
+
+RouteAgent 评测：
+
+```bash
+python3 scripts/evaluation/evaluate_route_agent.py --min-accuracy 0.85
+```
+
+示例输出会包含 `Accuracy` 和混淆矩阵；默认离线模式用于本地快速回归，也可以传 `--api-url http://127.0.0.1:8094` 读取真实 `/chat` SSE 的 `ROUTE(1004)` 事件。
 
 手工集成测试依赖真实模型、Nacos、业务中间件和密钥，默认通过 JUnit Tag 排除：
 

@@ -96,6 +96,7 @@ export function useStreaming(options: UseStreamingOptions) {
           params: reply.params || null,
           toolSummary: toToolSummary(reply.params || null),
           references: reply.references || [],
+          routeResult: reply.routeResult || null,
         });
         setBanner(null);
       } catch (error) {

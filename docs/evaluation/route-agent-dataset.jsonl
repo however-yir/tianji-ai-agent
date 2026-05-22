@@ -1,0 +1,24 @@
+{"id":"route-001","category":"recommend","input":"我零基础，想 3 个月入门 Java 后端，帮我推荐课程","expectedAgent":"RECOMMEND"}
+{"id":"route-002","category":"recommend","input":"想学 AI 应用开发，有哪些课程适合入门？","expectedAgent":"RECOMMEND"}
+{"id":"route-003","category":"recommend","input":"我有前端基础，想转后端，帮我选课","expectedAgent":"RECOMMEND"}
+{"id":"route-004","category":"consult","input":"介绍一下 1589905661084430337 这门课适合谁，价格多少","expectedAgent":"CONSULT"}
+{"id":"route-005","category":"consult","input":"这门 Java 后端工程师体系课有效期多久？","expectedAgent":"CONSULT"}
+{"id":"route-006","category":"consult","input":"课程详情里项目实战部分讲哪些内容？","expectedAgent":"CONSULT"}
+{"id":"route-007","category":"buy","input":"我要购买课程 1589905661084430337，帮我生成确认订单","expectedAgent":"BUY"}
+{"id":"route-008","category":"buy","input":"帮我对这个课程做一次预下单，我想看优惠后的金额","expectedAgent":"BUY"}
+{"id":"route-009","category":"buy","input":"课程 ID 1589905661084430337 已确定，请创建订单预览","expectedAgent":"BUY"}
+{"id":"route-010","category":"knowledge","input":"Java 中 Redis 缓存穿透是什么，怎么处理？","expectedAgent":"KNOWLEDGE"}
+{"id":"route-011","category":"knowledge","input":"讲一下 JVM 垃圾回收的基本原理","expectedAgent":"KNOWLEDGE"}
+{"id":"route-012","category":"knowledge","input":"什么是 Spring Boot 自动配置？","expectedAgent":"KNOWLEDGE"}
+{"id":"route-013","category":"after_sale","input":"我买完课以后在哪里开发票？","expectedAgent":"AFTER_SALE"}
+{"id":"route-014","category":"after_sale","input":"课程视频无法播放，售后怎么处理？","expectedAgent":"AFTER_SALE"}
+{"id":"route-015","category":"after_sale","input":"我想了解一下课程退款流程","expectedAgent":"AFTER_SALE"}
+{"id":"route-016","category":"complaint","input":"我要投诉课程质量太差，要求平台处理","expectedAgent":"HUMAN_HANDOFF"}
+{"id":"route-017","category":"complaint","input":"老师服务态度很差，我要差评并举报","expectedAgent":"HUMAN_HANDOFF"}
+{"id":"route-018","category":"complaint","input":"感觉被骗了，我要维权","expectedAgent":"HUMAN_HANDOFF"}
+{"id":"route-019","category":"study_plan","input":"我每天只有 1 小时，帮我规划两个月 Java 学习路径","expectedAgent":"STUDY_PLAN"}
+{"id":"route-020","category":"study_plan","input":"周末学习 Spring Boot，帮我排一个学习计划","expectedAgent":"STUDY_PLAN"}
+{"id":"route-021","category":"study_plan","input":"我要准备后端面试，帮我按阶段制定学习规划","expectedAgent":"STUDY_PLAN"}
+{"id":"route-022","category":"human_handoff","input":"帮我转人工客服，我想让老师电话联系我","expectedAgent":"HUMAN_HANDOFF"}
+{"id":"route-023","category":"human_handoff","input":"付款失败但银行卡已经扣款了，麻烦人工确认","expectedAgent":"HUMAN_HANDOFF"}
+{"id":"route-024","category":"human_handoff","input":"支付验证码和订单状态都异常，需要真人客服介入","expectedAgent":"HUMAN_HANDOFF"}

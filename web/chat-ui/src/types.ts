@@ -63,13 +63,18 @@ export type OrderCardData = {
   payAmount: number;
   orderId: string;
   couponName?: string;
+  businessState?: string;
+  stateTrace?: string[];
+  nextAction?: string;
 };
 
 export type RouteResult = {
   intent?: string;
   confidence?: number;
   reason?: string;
+  routeReason?: string;
   nextAgent?: string;
+  candidateAgents?: string[];
   needRag?: boolean;
   needMemory?: boolean;
   riskLevel?: string;

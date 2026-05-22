@@ -1,0 +1,19 @@
+<svg width="1200" height="720" viewBox="0 0 1200 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="720" fill="#F4F7FB"/>
+  <rect x="72" y="64" width="1056" height="592" rx="18" fill="#101827"/>
+  <rect x="72" y="64" width="1056" height="48" rx="18" fill="#1F2937"/>
+  <circle cx="108" cy="88" r="7" fill="#EF4444"/>
+  <circle cx="132" cy="88" r="7" fill="#F59E0B"/>
+  <circle cx="156" cy="88" r="7" fill="#22C55E"/>
+  <text x="190" y="94" fill="#CBD5E1" font-family="SFMono-Regular, Menlo, monospace" font-size="16">RouteAgent evaluation</text>
+  <text x="112" y="158" fill="#93C5FD" font-family="SFMono-Regular, Menlo, monospace" font-size="20">$ python3 scripts/evaluation/evaluate_route_agent.py --min-accuracy 0.85</text>
+  <text x="112" y="218" fill="#E5E7EB" font-family="SFMono-Regular, Menlo, monospace" font-size="22">RouteAgent eval mode: offline</text>
+  <text x="112" y="258" fill="#E5E7EB" font-family="SFMono-Regular, Menlo, monospace" font-size="22">Dataset: docs/evaluation/route-agent-dataset.jsonl</text>
+  <text x="112" y="298" fill="#E5E7EB" font-family="SFMono-Regular, Menlo, monospace" font-size="22">Samples: 24</text>
+  <text x="112" y="346" fill="#A7F3D0" font-family="SFMono-Regular, Menlo, monospace" font-size="30" font-weight="700">Accuracy: 100.00% (24/24)</text>
+  <rect x="112" y="388" width="900" height="142" rx="10" fill="#172033" stroke="#334155"/>
+  <text x="136" y="428" fill="#CBD5E1" font-family="SFMono-Regular, Menlo, monospace" font-size="17">Confusion matrix</text>
+  <text x="136" y="468" fill="#94A3B8" font-family="SFMono-Regular, Menlo, monospace" font-size="15">rows = expected, cols = predicted</text>
+  <text x="136" y="506" fill="#E5E7EB" font-family="SFMono-Regular, Menlo, monospace" font-size="15">RECOMMEND  CONSULT  BUY  KNOWLEDGE  AFTER_SALE  STUDY_PLAN  HUMAN_HANDOFF</text>
+  <text x="112" y="588" fill="#A7F3D0" font-family="SFMono-Regular, Menlo, monospace" font-size="24">PASSED: accuracy 100.00% &gt;= 85.00%</text>
+</svg>

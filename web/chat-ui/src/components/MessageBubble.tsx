@@ -1,5 +1,5 @@
 import { Suspense, lazy, useCallback, useState } from "react";
-import type { ChatMessage } from "../types";
+import type { ChatMessage, RouteResult } from "../types";
 import {
   extractCourseCard,
   extractOrderCard,
@@ -16,6 +16,30 @@ type MessageBubbleProps = {
   onCopy: (content: string) => void;
   onRetry: (message: ChatMessage) => void;
 };
+
+function RouteTracePanel({ route }: { route?: RouteResult | null }) {
+  if (!route) return null;
+  const target = route.nextAgent ?? route.intent ?? "UNKNOWN";
+  const reason = route.routeReason ?? route.reason;
+  const candidates = route.candidateAgents?.filter(Boolean).slice(0, 4) ?? [];
+  return (
+    <div className="route-trace-panel" data-testid="route-trace-panel">
+      <div className="route-trace-main">
+        <span>RouteAgent</span>
+        <strong>{target}</strong>
+        {route.confidence != null ? <em>{(route.confidence * 100).toFixed(0)}%</em> : null}
+      </div>
+      {reason ? <p>{reason}</p> : null}
+      {candidates.length ? (
+        <div className="route-candidate-row">
+          {candidates.map((agent) => (
+            <span key={agent}>{agent}</span>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export default function MessageBubble({
   message,
@@ -88,7 +112,9 @@ export default function MessageBubble({
               {message.routeResult.confidence != null ? (
                 <span className="route-conf-badge">{(message.routeResult.confidence * 100).toFixed(0)}%</span>
               ) : null}
-              {message.routeResult.reason ? <span className="route-reason-text">{message.routeResult.reason}</span> : null}
+              {message.routeResult.routeReason || message.routeResult.reason ? (
+                <span className="route-reason-text">{message.routeResult.routeReason ?? message.routeResult.reason}</span>
+              ) : null}
             </div>
             <div className="route-tag-row">
               {message.routeResult.needRag ? <span className="ev-tag rag">RAG</span> : null}
@@ -188,6 +214,7 @@ export default function MessageBubble({
               </div>
             </div>
             {course.detail ? <p className="card-detail">{course.detail}</p> : null}
+            <RouteTracePanel route={message.routeResult} />
           </article>
         ) : null}
 
@@ -218,7 +245,15 @@ export default function MessageBubble({
                 <strong className="pay-amount">{formatMoney(order.payAmount)}</strong>
               </div>
             </div>
+            {order.businessState ? (
+              <div className="order-state-strip">
+                <strong>{order.businessState}</strong>
+                {order.stateTrace?.length ? <span>{order.stateTrace.join(" -> ")}</span> : null}
+              </div>
+            ) : null}
+            {order.nextAction ? <p className="card-detail">{order.nextAction}</p> : null}
             {order.couponName ? <p className="card-detail">🎫 {order.couponName}</p> : null}
+            <RouteTracePanel route={message.routeResult} />
           </article>
         ) : null}
 

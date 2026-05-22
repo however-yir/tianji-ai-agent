@@ -32,7 +32,9 @@ public class RouteAgent extends AbstractAgent {
      *   "intent": "BUY",
      *   "confidence": 0.91,
      *   "reason": "用户明确表达购买课程并要求生成订单",
+     *   "routeReason": "购买意图清晰，且只请求预下单确认",
      *   "nextAgent": "BUY",
+     *   "candidateAgents": ["BUY", "CONSULT", "HUMAN_HANDOFF"],
      *   "needRag": true,
      *   "needMemory": true,
      *   "riskLevel": "LOW"
@@ -50,13 +52,16 @@ public class RouteAgent extends AbstractAgent {
                 Analyze the user's question and route to the most appropriate agent.
 
                 Available agents: RECOMMEND, CONSULT, BUY, KNOWLEDGE, AFTER_SALE, COMPLAINT, STUDY_PLAN, HUMAN_HANDOFF
+                Complaints, low-confidence cases, and payment-sensitive issues must prefer HUMAN_HANDOFF.
 
                 Return JSON only:
                 {
                   "intent": "BUY",
                   "confidence": 0.91,
                   "reason": "brief explanation of routing decision",
+                  "routeReason": "short user-facing reason for the route event",
                   "nextAgent": "BUY",
+                  "candidateAgents": ["BUY", "CONSULT", "HUMAN_HANDOFF"],
                   "needRag": true,
                   "needMemory": true,
                   "riskLevel": "LOW"

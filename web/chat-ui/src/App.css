@@ -1386,6 +1386,89 @@ strong.pay-amount {
   gap: 4px;
 }
 
+.route-trace-panel {
+  margin: 0 14px 14px;
+  padding: 10px 12px;
+  border-top: 1px solid #dbe7f8;
+  background: #f8fbff;
+}
+
+.route-trace-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.route-trace-main span {
+  color: #52617c;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.route-trace-main strong {
+  color: #1d427f;
+  font-size: 0.82rem;
+  word-break: break-word;
+}
+
+.route-trace-main em {
+  margin-left: auto;
+  border-radius: 4px;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 800;
+  padding: 2px 6px;
+}
+
+.route-trace-panel p {
+  margin: 6px 0 0;
+  padding: 0;
+  color: #5c6b84;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.route-candidate-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.route-candidate-row span {
+  border-radius: 4px;
+  background: #eef4ff;
+  color: #244888;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 2px 6px;
+}
+
+.order-state-strip {
+  display: grid;
+  gap: 4px;
+  margin: 0 14px 12px;
+  padding: 10px 12px;
+  border-top: 1px solid #f0d9b5;
+  background: #fffaf3;
+}
+
+.order-state-strip strong {
+  color: #9a5a0b;
+  font-size: 0.82rem;
+}
+
+.order-state-strip span {
+  color: #7c5a2a;
+  font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 /* ── Unified Event Tags ─────────────────────────────── */
 .ev-tag {
   display: inline-flex;
