@@ -35,6 +35,9 @@ export type UseStreamingOptions = {
   activeTitle: string;
   getSessionMessages: (sessionId: string) => ChatMessage[];
   upsertApiSessionSummary: (session: { id: string; title: string; updatedAt: string; source: "api"; lastSnippet: string }) => void;
+  selectedProvider?: string;
+  selectedModel?: string;
+  temperature?: number;
 };
 
 export function useStreaming(options: UseStreamingOptions) {
@@ -126,6 +129,7 @@ export function useStreaming(options: UseStreamingOptions) {
         setAssistantState, setBanner, setIsStreaming,
         token, sessionMeta, activeTitle,
         getSessionMessages, upsertApiSessionSummary,
+        selectedProvider, selectedModel, temperature,
       } = optionsRef.current;
       const controller = new AbortController();
       abortRef.current = controller;
@@ -133,7 +137,18 @@ export function useStreaming(options: UseStreamingOptions) {
       setIsStreaming(true);
 
       try {
-        await streamChatEvents({ question, sessionId, attachmentIds }, token, controller.signal, (event: ChatEventPayload) => {
+        await streamChatEvents(
+          {
+            question,
+            sessionId,
+            attachmentIds,
+            provider: selectedProvider,
+            model: selectedModel,
+            temperature,
+          },
+          token,
+          controller.signal,
+          (event: ChatEventPayload) => {
           if (event.eventType === 1001) {
             setAssistantState(sessionId, messageId, (message) => ({
               content: message.content + normalizeText(event.eventData),

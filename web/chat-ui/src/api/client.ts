@@ -114,7 +114,14 @@ export async function requestJson<T>(
 // ---------------------------------------------------------------------------
 
 export async function streamChatEvents(
-  body: { question: string; sessionId: string; attachmentIds?: string[] },
+  body: {
+    question: string;
+    sessionId: string;
+    attachmentIds?: string[];
+    provider?: string;
+    model?: string;
+    temperature?: number;
+  },
   token: string,
   signal: AbortSignal | undefined,
   onEvent: (event: ChatEventPayload) => void,
