@@ -3,6 +3,8 @@ package com.tianji.aigc.constants;
 public interface Constant {
 
     String REQUEST_ID = "requestId";
+    String SESSION_ID = "sessionId";
+    String AGENT_NAME = "agentName";
     String USER_ID = "userId";
     String STOP = "STOP";
     String ID = "id";

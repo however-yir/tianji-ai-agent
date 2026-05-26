@@ -1,5 +1,5 @@
 import { Suspense, lazy, useCallback, useState } from "react";
-import type { ChatMessage, RouteResult } from "../types";
+import type { AgentHarnessTrace, ChatMessage, RouteResult } from "../types";
 import {
   extractCourseCard,
   extractOrderCard,
@@ -38,6 +38,34 @@ function RouteTracePanel({ route }: { route?: RouteResult | null }) {
         </div>
       ) : null}
     </div>
+  );
+}
+
+function HarnessTraceList({ traces }: { traces?: AgentHarnessTrace[] }) {
+  if (!traces?.length) return null;
+  return (
+    <details className="fold-card harness-trace-card" open>
+      <summary>工具执行轨迹</summary>
+      <div className="harness-trace-list">
+        {traces.map((trace, index) => (
+          <div className="harness-trace-item" key={trace.observationId ?? `${trace.actionType}-${index}`}>
+            <div className="harness-trace-main">
+              <strong>{trace.agentName ?? "UNKNOWN_AGENT"}</strong>
+              <span>{trace.toolName ?? trace.actionType ?? "UNKNOWN_TOOL"}</span>
+              <em className={trace.success ? "ok" : "fail"}>{trace.success ? "SUCCESS" : "BLOCKED"}</em>
+            </div>
+            <div className="harness-trace-meta">
+              {trace.actionType ? <span>{trace.actionType}</span> : null}
+              {trace.resultField ? <span>{trace.resultField}</span> : null}
+              {trace.latencyMillis != null ? <span>{trace.latencyMillis}ms</span> : null}
+            </div>
+            {trace.policyReason || trace.errorMessage ? (
+              <p>{trace.errorMessage ?? trace.policyReason}</p>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </details>
   );
 }
 
@@ -176,6 +204,8 @@ export default function MessageBubble({
             </details>
           </div>
         ) : null}
+
+        <HarnessTraceList traces={message.harnessTraces} />
 
         {message.attachments?.length ? (
           <div className="attachment-list">

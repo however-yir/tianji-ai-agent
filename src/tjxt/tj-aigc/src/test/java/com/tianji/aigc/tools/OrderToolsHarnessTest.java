@@ -2,7 +2,13 @@ package com.tianji.aigc.tools;
 
 import com.tianji.aigc.config.ToolResultHolder;
 import com.tianji.aigc.constants.Constant;
+import com.tianji.aigc.harness.ActionPolicyGuard;
+import com.tianji.aigc.harness.AgentHarnessService;
+import com.tianji.aigc.harness.AgentRuntime;
+import com.tianji.aigc.harness.HarnessEventRecorder;
+import com.tianji.aigc.knowledgeops.KnowledgeOpsClient;
 import com.tianji.aigc.tools.result.PrePlaceOrder;
+import com.tianji.api.client.course.CourseClient;
 import com.tianji.api.client.trade.TradeClient;
 import com.tianji.api.dto.promotion.CouponDiscountDTO;
 import com.tianji.api.dto.promotion.OrderCourseDTO;
@@ -23,10 +29,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class OrderToolsTest {
+class OrderToolsHarnessTest {
 
     @Mock
+    private CourseClient courseClient;
+    @Mock
     private TradeClient tradeClient;
+    @Mock
+    private KnowledgeOpsClient knowledgeOpsClient;
 
     @AfterEach
     void tearDown() {
@@ -35,7 +45,7 @@ class OrderToolsTest {
     }
 
     @Test
-    void shouldPrePlaceOrderAndStoreOrderParams() {
+    void shouldPrePlaceOrderThroughHarnessAndStoreOrderParams() {
         OrderConfirmVO confirmVO = OrderConfirmVO.builder()
                 .orderId(202604290001L)
                 .totalAmount(19900)
@@ -49,10 +59,15 @@ class OrderToolsTest {
                 .build();
         when(tradeClient.prePlaceOrder(List.of(1589905661084430337L))).thenReturn(confirmVO);
 
-        OrderTools tools = new OrderTools(tradeClient);
+        OrderTools tools = new OrderTools(newHarnessService());
         PrePlaceOrder result = tools.prePlaceOrder(
                 List.of(1589905661084430337L),
-                new ToolContext(Map.of(Constant.USER_ID, 10001L, Constant.REQUEST_ID, "request-1"))
+                new ToolContext(Map.of(
+                        Constant.USER_ID, 10001L,
+                        Constant.REQUEST_ID, "request-1",
+                        Constant.SESSION_ID, "session-1",
+                        Constant.AGENT_NAME, "BUY"
+                ))
         );
 
         assertThat(result.getOrderId()).isEqualTo(202604290001L);
@@ -64,7 +79,23 @@ class OrderToolsTest {
         assertThat(result.getStateTrace()).containsExactly("COURSE_SELECTED", "ORDER_PREVIEW", "USER_CONFIRM_REQUIRED");
         assertThat(result.getNextAction()).contains("HANDOFF_OR_DONE");
         assertThat(ToolResultHolder.get("request-1", "prePlaceOrder")).isEqualTo(result);
+        assertThat((List<?>) ToolResultHolder.get("request-1", HarnessEventRecorder.TRACE_FIELD))
+                .singleElement()
+                .satisfies(trace -> {
+                    Map<?, ?> traceMap = (Map<?, ?>) trace;
+                    assertThat(traceMap.get("agentName")).isEqualTo("BUY");
+                    assertThat(traceMap.get("actionType")).isEqualTo("order.preview");
+                    assertThat(traceMap.get("success")).isEqualTo(true);
+                });
         assertThat(UserContext.getUser()).isEqualTo(10001L);
         verify(tradeClient).prePlaceOrder(List.of(1589905661084430337L));
+    }
+
+    private AgentHarnessService newHarnessService() {
+        return new AgentHarnessService(
+                new ActionPolicyGuard(),
+                new AgentRuntime(courseClient, tradeClient, knowledgeOpsClient),
+                new HarnessEventRecorder()
+        );
     }
 }

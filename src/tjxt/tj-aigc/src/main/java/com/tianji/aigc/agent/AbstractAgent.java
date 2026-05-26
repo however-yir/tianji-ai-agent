@@ -11,6 +11,7 @@ import com.tianji.aigc.config.ModelOptionsHolder.ModelOptions;
 import com.tianji.aigc.config.ToolResultHolder;
 import com.tianji.aigc.constants.Constant;
 import com.tianji.aigc.enums.ChatEventTypeEnum;
+import com.tianji.aigc.harness.HarnessEventRecorder;
 import com.tianji.aigc.service.ChatService;
 import com.tianji.aigc.service.ChatSessionService;
 import com.tianji.aigc.vo.ChatEventVO;
@@ -133,15 +134,26 @@ public abstract class AbstractAgent implements Agent {
                         var map = ToolResultHolder.get(requestId);
                         if (CollUtil.isNotEmpty(map)) {
                             ToolResultHolder.remove(requestId); // 清除参数列表
+                            List<ChatEventVO> events = new ArrayList<>();
+                            Object trace = map.get(HarnessEventRecorder.TRACE_FIELD);
+                            if (trace != null) {
+                                events.add(ChatEventVO.builder()
+                                        .eventData(trace)
+                                        .eventType(ChatEventTypeEnum.TRACE.getValue())
+                                        .build());
+                            }
                             // 响应给前端的参数数据
                             ChatEventVO chatEventVO = ChatEventVO.builder()
                                     .eventData(map)
                                     .eventType(ChatEventTypeEnum.PARAM.getValue())
                                     .build();
-                            return Flux.just(chatEventVO, STOP_EVENT);
+                            events.add(chatEventVO);
+                            events.add(STOP_EVENT);
+                            return Flux.fromIterable(events);
                         }
                         return Flux.just(STOP_EVENT);
-                    } finally {
+                    }
+                    finally {
                         if (this.useAttachmentContext()) {
                             AttachmentContextHolder.clear(sessionId);
                         }

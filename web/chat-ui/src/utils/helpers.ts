@@ -4,6 +4,7 @@ import type {
   BannerTone,
   ChatMessage,
   CourseCardData,
+  AgentHarnessTrace,
   OrderCardData,
   ReferenceCard,
   ToolSummaryItem,
@@ -186,7 +187,19 @@ export function toToolSummary(params: Record<string, unknown> | null | undefined
     items.push({ label: "结果", value: typeof result === "string" ? result : JSON.stringify(result) });
   }
   const keys = Object.keys(params).filter(
-    (k) => !["toolName", "tool", "result", "output", "course", "order", "courseCard", "orderCard", "courseInfo", "orderInfo"].includes(k),
+    (k) => ![
+      "toolName",
+      "tool",
+      "result",
+      "output",
+      "course",
+      "order",
+      "courseCard",
+      "orderCard",
+      "courseInfo",
+      "orderInfo",
+      "agentHarnessTrace",
+    ].includes(k),
   );
   for (const key of keys.slice(0, 6)) {
     const val = params[key];
@@ -220,6 +233,35 @@ export function extractAttachmentIds(params: Record<string, unknown> | null | un
   const raw = params.attachmentIds ?? params.attachments;
   if (!Array.isArray(raw)) return [];
   return raw.map(String);
+}
+
+export function normalizeHarnessTracePayload(payload: unknown): AgentHarnessTrace[] {
+  const rawItems = Array.isArray(payload) ? payload : payload ? [payload] : [];
+  return rawItems
+    .map((item) => {
+      const record = asRecord(item);
+      if (!record) return null;
+      return {
+        observationId: record.observationId != null ? String(record.observationId) : undefined,
+        agentName: record.agentName != null ? String(record.agentName) : undefined,
+        toolName: record.toolName != null ? String(record.toolName) : undefined,
+        actionType: record.actionType != null ? String(record.actionType) : undefined,
+        allowed: record.allowed != null ? Boolean(record.allowed) : undefined,
+        success: record.success != null ? Boolean(record.success) : undefined,
+        policyReason: record.policyReason != null ? String(record.policyReason) : undefined,
+        resultField: record.resultField != null ? String(record.resultField) : undefined,
+        resultType: record.resultType != null ? String(record.resultType) : undefined,
+        errorMessage: record.errorMessage != null ? String(record.errorMessage) : undefined,
+        latencyMillis: record.latencyMillis != null ? Number(record.latencyMillis) : undefined,
+        observedAt: record.observedAt != null ? String(record.observedAt) : undefined,
+      };
+    })
+    .filter(Boolean) as AgentHarnessTrace[];
+}
+
+export function extractHarnessTraces(params: Record<string, unknown> | null | undefined): AgentHarnessTrace[] {
+  if (!params) return [];
+  return normalizeHarnessTracePayload(params.agentHarnessTrace ?? params.harnessTrace ?? params.trace);
 }
 
 // ---------------------------------------------------------------------------

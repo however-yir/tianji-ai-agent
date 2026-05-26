@@ -16,6 +16,8 @@ import {
   createBanner,
   errorToMessage,
   extractAttachmentIds,
+  extractHarnessTraces,
+  normalizeHarnessTracePayload,
   normalizeText,
   stripMarkdown,
   toReferences,
@@ -96,6 +98,7 @@ export function useStreaming(options: UseStreamingOptions) {
           params: reply.params || null,
           toolSummary: toToolSummary(reply.params || null),
           references: reply.references || [],
+          harnessTraces: extractHarnessTraces(reply.params || null),
           routeResult: reply.routeResult || null,
         });
         setBanner(null);
@@ -161,12 +164,23 @@ export function useStreaming(options: UseStreamingOptions) {
               event.eventData && typeof event.eventData === "object"
                 ? (event.eventData as Record<string, unknown>)
                 : { payload: event.eventData };
-            setAssistantState(sessionId, messageId, {
+            const traces = extractHarnessTraces(params);
+            setAssistantState(sessionId, messageId, (message) => ({
               params,
               toolSummary: toToolSummary(params),
               references: toReferences(params),
               attachmentIds: extractAttachmentIds(params),
-            });
+              harnessTraces: traces.length > 0 ? traces : message.harnessTraces,
+            }));
+            return;
+          }
+          if (event.eventType === 1005) {
+            const traces = normalizeHarnessTracePayload(event.eventData);
+            if (traces.length > 0) {
+              setAssistantState(sessionId, messageId, (prev) => ({
+                harnessTraces: [...(prev.harnessTraces ?? []), ...traces],
+              }));
+            }
             return;
           }
           if (event.eventType === 1004) {

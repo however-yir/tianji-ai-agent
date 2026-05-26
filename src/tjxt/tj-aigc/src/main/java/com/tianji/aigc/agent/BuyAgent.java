@@ -61,6 +61,8 @@ public class BuyAgent extends AbstractAgent {
     public Map<String, Object> toolContext(String sessionId, String requestId) {
         var userId = UserContext.getUser();
         return MapUtil.<String, Object>builder() // 设置tool列表
+                .put(Constant.SESSION_ID, sessionId)
+                .put(Constant.AGENT_NAME, this.getAgentType().getAgentName())
                 .put(Constant.USER_ID, userId) // 设置用户id参数
                 .put(Constant.REQUEST_ID, requestId) // 设置请求id参数
                 .build();

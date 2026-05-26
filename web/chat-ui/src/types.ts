@@ -94,6 +94,21 @@ export type MemoryHit = {
   source?: string;
 };
 
+export type AgentHarnessTrace = {
+  observationId?: string;
+  agentName?: string;
+  toolName?: string;
+  actionType?: string;
+  allowed?: boolean;
+  success?: boolean;
+  policyReason?: string;
+  resultField?: string;
+  resultType?: string;
+  errorMessage?: string;
+  latencyMillis?: number;
+  observedAt?: string;
+};
+
 export type ChatMessage = {
   id: string;
   role: MessageRole;
@@ -106,6 +121,7 @@ export type ChatMessage = {
   routeResult?: RouteResult | null;
   evidence?: EvidenceCard[];
   memoryHits?: MemoryHit[];
+  harnessTraces?: AgentHarnessTrace[];
   originQuestion?: string;
   attachments?: AttachmentItem[];
   attachmentIds?: string[];

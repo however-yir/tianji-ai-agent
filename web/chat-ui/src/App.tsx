@@ -38,6 +38,7 @@ import {
   downloadTextFile,
   errorToMessage,
   extractAttachmentIds,
+  extractHarnessTraces,
   findShortcut,
   formatTimestamp,
   formatBytes,
@@ -340,6 +341,7 @@ export default function App() {
           toolSummary: toToolSummary(item.params),
           references: toReferences(item.params),
           attachmentIds: extractAttachmentIds(item.params),
+          harnessTraces: extractHarnessTraces(item.params),
         }));
         setMessageCache((current) => ({
           ...current,

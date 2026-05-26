@@ -4,7 +4,7 @@
 >
 > **Business Agent Showcase** — 这不是一个框架 Demo，而是一个 **可运行的业务 Agent 工程案例**：围绕在线课程客服场景，展示如何用 Spring AI 多智能体架构完成从意图识别、课程推荐、预下单到售后转人工的完整业务闭环。
 
-用户提问 -> RouteAgent 意图识别 -> 9 种子 Agent 分发 -> Tool Calling 调用课程/订单微服务 -> SSE 流式返回 -> 前端课程/订单卡片渲染。
+用户提问 -> RouteAgent 意图识别 -> 9 种子 Agent 分发 -> AgentHarness 治理业务动作 -> Runtime 调用课程/订单/KnowledgeOps -> Observation 写入 TRACE/PARAM -> SSE 流式返回 -> 前端课程/订单卡片与工具轨迹渲染。
 
 [![CI](https://github.com/however-yir/tianji-ai-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/however-yir/tianji-ai-agent/actions/workflows/ci.yml)
 [![Java](https://img.shields.io/badge/Java-17-007396?logo=openjdk)](https://openjdk.org/)
@@ -27,9 +27,9 @@
 1. 用户在聊天前端输入课程咨询、推荐或购买问题。
 2. `tj-aigc` 接收 `/chat` 请求，建立会话上下文和附件上下文。
 3. `RouteAgent` 判断意图（结构化 JSON：intent/confidence/routeReason/candidateAgents/nextAgent/needRag/needMemory/riskLevel），路由到 9 种子 Agent；投诉、低置信度和支付敏感问题统一兜底到 `HUMAN_HANDOFF`。
-4. 子 Agent 通过 `CourseTools`、`OrderTools` 调用课程和交易微服务，通过 `KnowledgeOpsClient` 调用平台 RAG/记忆/图谱。
-5. `ToolResultHolder` 把工具结果转成 `PARAM` 事件，和模型文本一起通过 SSE 返回。
-6. 前端消费 `ROUTE / DATA / TRACE / EVIDENCE / MEMORY / PARAM / STOP` 事件，渲染路由链路、课程卡片、订单卡片、route trace、引用来源、记忆命中和停止生成状态。
+4. 子 Agent 通过 `CourseTools`、`OrderTools` 构造 `AgentAction`，交给 `AgentHarnessService` 执行 policy、runtime 和 observation。
+5. `AgentRuntime` 调用课程、交易或 KnowledgeOps 能力；`HarnessEventRecorder` 把 `AgentObservation` 写入 `TRACE`，把课程/订单结果写入 `PARAM`。
+6. 前端消费 `ROUTE / DATA / TRACE / EVIDENCE / MEMORY / PARAM / STOP` 事件，渲染路由链路、工具执行轨迹、课程卡片、订单卡片、route trace、引用来源、记忆命中和停止生成状态。
 
 **可用 Agent 类型：** `ROUTE` | `RECOMMEND` | `CONSULT` | `BUY` | `KNOWLEDGE` | `AFTER_SALE` | `COMPLAINT` | `STUDY_PLAN` | `HUMAN_HANDOFF`
 
@@ -46,13 +46,15 @@ flowchart LR
     ROUTE -->|BUY| BUY["BuyAgent<br/>购买下单"]
     ROUTE -->|CONSULT| CON["ConsultAgent<br/>课程咨询"]
     ROUTE -->|KNOWLEDGE| KNOW["KnowledgeAgent<br/>知识讲解"]
-    REC --> COURSE["CourseTools<br/>课程查询"]
+    REC --> COURSE["CourseTools<br/>构造 AgentAction"]
     CON --> COURSE
-    BUY --> ORDER["OrderTools<br/>预下单"]
-    COURSE --> PARAM["ToolResultHolder<br/>结构化参数"]
-    ORDER --> PARAM
+    BUY --> ORDER["OrderTools<br/>构造 order.preview"]
+    COURSE --> HARNESS["AgentHarness<br/>Policy Guard"]
+    ORDER --> HARNESS
+    HARNESS --> RUNTIME["AgentRuntime<br/>课程/交易/KnowledgeOps"]
+    RUNTIME --> OBS["AgentObservation<br/>TRACE + PARAM"]
     KNOW --> STREAM["SSE DATA"]
-    PARAM --> STREAM["SSE DATA + PARAM + STOP"]
+    OBS --> STREAM["SSE DATA + TRACE + PARAM + STOP"]
     STREAM --> CARD["前端课程/订单/引用卡片"]
 ```
 
@@ -64,6 +66,8 @@ sequenceDiagram
     participant Route as RouteAgent
     participant Agent as 子 Agent
     participant Tool as CourseTools/OrderTools
+    participant Harness as AgentHarness
+    participant Runtime as AgentRuntime
     participant Biz as 课程/交易微服务
     participant SSE as SSE Stream
 
@@ -73,14 +77,19 @@ sequenceDiagram
     Route-->>Chat: BUY
     Chat->>Agent: BuyAgent.processStream(...)
     Agent->>Tool: prePlaceOrder(courseIds, ToolContext)
-    Tool->>Biz: Feign 调用 /orders/prePlaceOrder
-    Biz-->>Tool: OrderConfirmVO
-    Tool-->>Agent: PrePlaceOrder
+    Tool->>Harness: AgentAction(order.preview)
+    Harness->>Harness: ActionPolicyGuard 只允许预下单
+    Harness->>Runtime: execute(order.preview)
+    Runtime->>Biz: Feign 调用 /orders/prePlaceOrder
+    Biz-->>Runtime: OrderConfirmVO
+    Runtime-->>Harness: PrePlaceOrder
+    Harness-->>Agent: AgentObservation
     Agent-->>SSE: DATA 文本增量
+    Agent-->>SSE: TRACE 工具执行轨迹
     Agent-->>SSE: PARAM {prePlaceOrder}
     Agent-->>SSE: STOP
-    SSE-->>Web: 流式文本 + 订单卡片参数
-    Web-->>User: 展示推荐说明和订单确认卡片
+    SSE-->>Web: 流式文本 + 工具轨迹 + 订单卡片参数
+    Web-->>User: 展示推荐说明、工具执行轨迹和订单确认卡片
 ```
 
 ## 聊天界面截图
@@ -106,6 +115,7 @@ sequenceDiagram
 ├── README.md
 ├── docs
 │   ├── agent-design.md
+│   ├── agent-harness.md
 │   ├── demo-script.md
 │   ├── mcp-extension-guide.md
 │   ├── multi-tenant-isolation.md
@@ -140,9 +150,9 @@ sequenceDiagram
 
 | 场景 | 演示问题 | 命中的后端链路 | 前端展示 |
 |---|---|---|---|
-| 课程推荐 | `我零基础，想 3 个月入门 Java 后端，帮我推荐课程` | `RouteAgent -> RecommendAgent -> CourseTools` | 推荐说明、课程卡片 |
-| 课程详情 | `介绍一下 1589905661084430337 这门课适合谁，价格多少` | `RouteAgent -> ConsultAgent -> CourseTools` | 课程详情卡片 |
-| 预下单 | `我要购买课程 1589905661084430337，帮我生成确认订单` | `RouteAgent -> BuyAgent -> OrderTools` | 订单确认卡片 |
+| 课程推荐 | `我零基础，想 3 个月入门 Java 后端，帮我推荐课程` | `RouteAgent -> RecommendAgent -> AgentHarness -> course.query` | 推荐说明、课程卡片、工具轨迹 |
+| 课程详情 | `介绍一下 1589905661084430337 这门课适合谁，价格多少` | `RouteAgent -> ConsultAgent -> AgentHarness -> course.query` | 课程详情卡片、工具轨迹 |
+| 预下单 | `我要购买课程 1589905661084430337，帮我生成确认订单` | `RouteAgent -> BuyAgent -> AgentHarness -> order.preview` | 订单确认卡片、工具轨迹 |
 | 知识问答 | `Java 中 Redis 缓存穿透是什么，怎么处理` | `RouteAgent -> KnowledgeAgent` | 流式知识回答 |
 | 语音/多模态入口 | `上传一张课程截图，或用语音问“这门课适合我吗”` | `/attachment/upload`、`/audio/stt`、`/audio/tts-stream`、`/chat` | 附件引用、语音输入、流式回复 |
 
@@ -174,12 +184,13 @@ sequenceDiagram
 | `ConsultAgent` | 课程咨询，查询课程详情和补充解释 |
 | `BuyAgent` | 购买链路，绑定 `OrderTools` 做预下单，状态机为 `COURSE_SELECTED -> ORDER_PREVIEW -> USER_CONFIRM_REQUIRED -> HANDOFF_OR_DONE` |
 | `KnowledgeAgent` | 通用知识讲解，不强依赖业务工具 |
-| `CourseTools` | 调课程微服务，返回 `CourseInfo` |
-| `OrderTools` | 调交易微服务，返回 `PrePlaceOrder` |
+| `AgentHarnessService` | 治理 `AgentAction`，串联 policy、runtime、observation |
+| `CourseTools` | 保持 Spring AI Tool 入口，内部提交 `course.query` 动作 |
+| `OrderTools` | 保持 Spring AI Tool 入口，内部提交 `order.preview` 动作 |
 | `RedisChatMemory` | 会话记忆读写，支撑历史上下文 |
 | `InMemoryAttachmentService` | dev/demo 可用的附件解析、切片、引用来源服务 |
 
-更多设计说明见 [docs/agent-design.md](docs/agent-design.md)。
+更多设计说明见 [docs/agent-design.md](docs/agent-design.md) 和 [docs/agent-harness.md](docs/agent-harness.md)。
 
 ## 快速开始
 

@@ -720,6 +720,79 @@ button {
   line-height: 1.45;
 }
 
+.harness-trace-list {
+  display: grid;
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+
+.harness-trace-item {
+  border: 1px solid var(--line);
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.harness-trace-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.harness-trace-main strong {
+  color: #1d427f;
+  font-size: 0.82rem;
+}
+
+.harness-trace-main span {
+  color: #42536f;
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.harness-trace-main em {
+  margin-left: auto;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 800;
+  padding: 2px 6px;
+}
+
+.harness-trace-main em.ok {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.harness-trace-main em.fail {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.harness-trace-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.harness-trace-meta span {
+  border-radius: 4px;
+  background: #eef4ff;
+  color: #244888;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 2px 6px;
+}
+
+.harness-trace-item p {
+  margin: 8px 0 0;
+  color: #5c6b84;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
 .business-card {
   margin-top: 10px;
   border-radius: 14px;

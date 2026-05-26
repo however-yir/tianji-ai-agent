@@ -6,8 +6,8 @@
 
 1. `RouteAgent` 只做意图识别，避免把业务工具、附件上下文和长历史都塞进路由阶段。
 2. 子 Agent 按业务动作拆分，而不是按技术能力拆分。
-3. 涉及课程、订单等事实数据时，必须通过 Tool Calling 获取，不让模型凭空生成。
-4. 前端协议稳定为 `DATA / PARAM / STOP`，让 UI 可以同时处理流式文本和结构化卡片。
+3. 涉及课程、订单等事实数据时，必须通过 Tool Calling 和 `AgentHarness` 获取，不让模型凭空生成。
+4. 前端协议稳定为 `DATA / TRACE / PARAM / STOP`，让 UI 可以同时处理流式文本、工具轨迹和结构化卡片。
 5. `dev-demo` 保证零密钥可演示，真实 profile 保留完整模型和微服务集成路径。
 
 ## Agent 职责
@@ -39,20 +39,20 @@ chat(question, sessionId)
 
 ### CourseTools
 
-`CourseTools.queryCourseById(courseId, toolContext)` 负责：
+`CourseTools.queryCourseById(courseId, toolContext)` 保持 Spring AI Tool Calling 入口，内部负责：
 
-- 调用 `CourseClient.baseInfo(courseId, true)`。
-- 将 `CourseBaseInfoDTO` 转成前端可展示的 `CourseInfo`。
-- 把结果写入 `ToolResultHolder`，字段形如 `courseInfo_{courseId}`。
+- 构造 `AgentAction(course.query)`。
+- 交给 `AgentHarnessService` 做 policy、runtime 和 observation。
+- 由 `HarnessEventRecorder` 把结果写入 `ToolResultHolder`，字段形如 `courseInfo_{courseId}`。
 
 ### OrderTools
 
-`OrderTools.prePlaceOrder(ids, toolContext)` 负责：
+`OrderTools.prePlaceOrder(ids, toolContext)` 保持 Spring AI Tool Calling 入口，内部负责：
 
 - 从 `ToolContext` 读取用户 ID，写入 `UserContext`。
-- 调用 `TradeClient.prePlaceOrder(courseIds)`。
-- 将 `OrderConfirmVO` 转成 `PrePlaceOrder`。
-- 把结果写入 `ToolResultHolder`，字段为 `prePlaceOrder`。
+- 构造 `AgentAction(order.preview)`。
+- 交给 `ActionPolicyGuard` 确认只做预下单，不执行支付和自动确认。
+- 由 `AgentRuntime` 调用 `TradeClient.prePlaceOrder(courseIds)`，并把结果写入 `ToolResultHolder`，字段为 `prePlaceOrder`。
 
 ### 业务边界
 
@@ -64,20 +64,24 @@ chat(question, sessionId)
 sequenceDiagram
     participant Agent as 子 Agent
     participant Tool as Tool Calling
+    participant Harness as AgentHarness
     participant Holder as ToolResultHolder
     participant Web as Chat UI
 
     Agent->>Web: DATA 文本片段
     Agent->>Tool: 调课程/订单工具
-    Tool->>Holder: put(requestId, field, result)
+    Tool->>Harness: AgentAction
+    Harness->>Holder: put(requestId, agentHarnessTrace, observation)
+    Harness->>Holder: put(requestId, field, result)
     Agent->>Web: DATA 文本片段
     Agent->>Holder: get(requestId)
     Holder-->>Agent: 结构化参数
+    Agent->>Web: TRACE 工具轨迹事件
     Agent->>Web: PARAM 参数事件
     Agent->>Web: STOP 结束事件
 ```
 
-前端不从模型文本里解析课程或订单信息，而是优先消费 `PARAM`。
+前端不从模型文本里解析课程或订单信息，而是优先消费 `TRACE` 和 `PARAM`。
 
 ## 会话记忆
 

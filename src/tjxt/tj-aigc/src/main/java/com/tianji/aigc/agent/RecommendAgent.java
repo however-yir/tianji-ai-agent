@@ -56,6 +56,8 @@ public class RecommendAgent extends AbstractAgent {
     public Map<String, Object> toolContext(String sessionId, String requestId) {
         var userId = UserContext.getUser();
         return MapUtil.<String, Object>builder()
+                .put(Constant.SESSION_ID, sessionId)
+                .put(Constant.AGENT_NAME, this.getAgentType().getAgentName())
                 .put(Constant.USER_ID, userId)
                 .put(Constant.REQUEST_ID, requestId)
                 .build();

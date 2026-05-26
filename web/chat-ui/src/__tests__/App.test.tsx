@@ -210,6 +210,31 @@ describe("App", () => {
           },
           { eventType: 1001, eventData: "已生成课程和订单预览。" },
           {
+            eventType: 1005,
+            eventData: [
+              {
+                agentName: "CONSULT",
+                toolName: "CourseTools.queryCourseById",
+                actionType: "course.query",
+                allowed: true,
+                success: true,
+                policyReason: "允许查询课程基础信息",
+                resultField: "courseInfo_1589905661084430337",
+                latencyMillis: 8,
+              },
+              {
+                agentName: "BUY",
+                toolName: "OrderTools.prePlaceOrder",
+                actionType: "order.preview",
+                allowed: true,
+                success: true,
+                policyReason: "允许订单预览；不执行支付、不自动确认购买",
+                resultField: "prePlaceOrder",
+                latencyMillis: 12,
+              },
+            ],
+          },
+          {
             eventType: 1003,
             eventData: {
               courseInfo_1589905661084430337: {
@@ -253,6 +278,9 @@ describe("App", () => {
     expect(screen.getByText("Java 后端工程师体系课")).toBeInTheDocument();
     expect(screen.getByText("USER_CONFIRM_REQUIRED")).toBeInTheDocument();
     expect(screen.getByText(/COURSE_SELECTED -> ORDER_PREVIEW -> USER_CONFIRM_REQUIRED/)).toBeInTheDocument();
+    expect(screen.getByText("工具执行轨迹")).toBeInTheDocument();
+    expect(screen.getByText("CourseTools.queryCourseById")).toBeInTheDocument();
+    expect(screen.getByText("order.preview")).toBeInTheDocument();
     expect(screen.getAllByTestId("route-trace-panel").length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText(/购买意图明确/).length).toBeGreaterThanOrEqual(1);
   });

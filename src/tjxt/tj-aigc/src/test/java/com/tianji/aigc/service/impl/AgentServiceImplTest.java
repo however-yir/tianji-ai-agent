@@ -1,17 +1,31 @@
 package com.tianji.aigc.service.impl;
 
 import com.tianji.aigc.agent.Agent;
+import com.tianji.aigc.config.ToolResultHolder;
 import com.tianji.aigc.config.SystemPromptConfig;
+import com.tianji.aigc.constants.Constant;
 import com.tianji.aigc.enums.AgentTypeEnum;
 import com.tianji.aigc.enums.ChatEventTypeEnum;
+import com.tianji.aigc.harness.ActionPolicyGuard;
+import com.tianji.aigc.harness.AgentHarnessService;
+import com.tianji.aigc.harness.AgentRuntime;
+import com.tianji.aigc.harness.HarnessEventRecorder;
+import com.tianji.aigc.knowledgeops.KnowledgeOpsClient;
+import com.tianji.aigc.tools.CourseTools;
+import com.tianji.aigc.tools.result.CourseInfo;
 import com.tianji.aigc.vo.ChatEventVO;
+import com.tianji.api.client.course.CourseClient;
+import com.tianji.api.client.trade.TradeClient;
+import com.tianji.api.dto.course.CourseBaseInfoDTO;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.model.ToolContext;
 
 import java.util.List;
+import java.util.Map;
 
 import reactor.core.publisher.Flux;
 
@@ -32,6 +46,12 @@ class AgentServiceImplTest {
     private Agent recommendAgent;
     @Mock
     private Agent humanHandoffAgent;
+    @Mock
+    private CourseClient courseClient;
+    @Mock
+    private TradeClient tradeClient;
+    @Mock
+    private KnowledgeOpsClient knowledgeOpsClient;
 
     @Test
     void shouldRouteQuestionToResolvedAgent() {
@@ -93,6 +113,56 @@ class AgentServiceImplTest {
         assertThat(route.confidence()).isEqualTo(0.92);
         assertThat(route.routeReason()).isEqualTo("推荐意图明确");
         assertThat(route.candidateAgents()).contains("RECOMMEND", "CONSULT");
+    }
+
+    @Test
+    void shouldRouteToHarnessBackedToolAndEmitTraceAndParams() {
+        when(routeAgent.getAgentType()).thenReturn(AgentTypeEnum.ROUTE);
+        when(routeAgent.process("介绍课程 1589905661084430337", "session-harness")).thenReturn("""
+                {
+                  "intent": "CONSULT",
+                  "confidence": 0.9,
+                  "reason": "用户查询课程详情",
+                  "routeReason": "课程咨询意图明确",
+                  "nextAgent": "CONSULT",
+                  "candidateAgents": ["CONSULT", "RECOMMEND"],
+                  "riskLevel": "LOW"
+                }
+                """);
+        CourseBaseInfoDTO dto = new CourseBaseInfoDTO();
+        dto.setId(1589905661084430337L);
+        dto.setName("Java 后端工程师体系课");
+        dto.setPrice(19900);
+        when(courseClient.baseInfo(1589905661084430337L, true)).thenReturn(dto);
+        CourseTools courseTools = new CourseTools(newHarnessService());
+        Agent consultAgent = new HarnessBackedConsultAgent(courseTools);
+
+        AgentServiceImpl service = new AgentServiceImpl(
+                openAiChatClient,
+                systemPromptConfig,
+                List.of(routeAgent, consultAgent)
+        );
+
+        List<ChatEventVO> events = service.chat("介绍课程 1589905661084430337", "session-harness").collectList().block();
+
+        assertThat(events).hasSize(4);
+        assertThat(events.get(0).getEventType()).isEqualTo(ChatEventTypeEnum.ROUTE.getValue());
+        assertThat(events.get(1).getEventType()).isEqualTo(ChatEventTypeEnum.TRACE.getValue());
+        assertThat(events.get(2).getEventType()).isEqualTo(ChatEventTypeEnum.PARAM.getValue());
+        assertThat((List<?>) events.get(1).getEventData())
+                .singleElement()
+                .satisfies(trace -> {
+                    Map<?, ?> traceMap = (Map<?, ?>) trace;
+                    assertThat(traceMap.get("agentName")).isEqualTo("CONSULT");
+                    assertThat(traceMap.get("actionType")).isEqualTo("course.query");
+                    assertThat(traceMap.get("success")).isEqualTo(true);
+                });
+        Map<?, ?> params = (Map<?, ?>) events.get(2).getEventData();
+        assertThat(params.containsKey("courseInfo_1589905661084430337")).isTrue();
+        assertThat(params.containsKey(HarnessEventRecorder.TRACE_FIELD)).isTrue();
+        CourseInfo courseInfo = (CourseInfo) params.get("courseInfo_1589905661084430337");
+        assertThat(courseInfo.getName()).isEqualTo("Java 后端工程师体系课");
+        verify(courseClient).baseInfo(1589905661084430337L, true);
     }
 
     @Test
@@ -210,5 +280,66 @@ class AgentServiceImplTest {
         service.stop("session-3");
 
         verify(routeAgent).stop("session-3");
+    }
+
+    private AgentHarnessService newHarnessService() {
+        return new AgentHarnessService(
+                new ActionPolicyGuard(),
+                new AgentRuntime(courseClient, tradeClient, knowledgeOpsClient),
+                new HarnessEventRecorder()
+        );
+    }
+
+    private static class HarnessBackedConsultAgent implements Agent {
+        private static final String REQUEST_ID = "request-harness";
+
+        private final CourseTools courseTools;
+
+        private HarnessBackedConsultAgent(CourseTools courseTools) {
+            this.courseTools = courseTools;
+        }
+
+        @Override
+        public Flux<ChatEventVO> processStream(String question, String sessionId) {
+            courseTools.queryCourseById(
+                    1589905661084430337L,
+                    new ToolContext(Map.of(
+                            Constant.REQUEST_ID, REQUEST_ID,
+                            Constant.SESSION_ID, sessionId,
+                            Constant.AGENT_NAME, "CONSULT",
+                            Constant.USER_ID, 10001L
+                    ))
+            );
+            Map<String, Object> params = ToolResultHolder.get(REQUEST_ID);
+            ToolResultHolder.remove(REQUEST_ID);
+            Object trace = params.get(HarnessEventRecorder.TRACE_FIELD);
+            return Flux.just(
+                    ChatEventVO.builder()
+                            .eventType(ChatEventTypeEnum.TRACE.getValue())
+                            .eventData(trace)
+                            .build(),
+                    ChatEventVO.builder()
+                            .eventType(ChatEventTypeEnum.PARAM.getValue())
+                            .eventData(params)
+                            .build(),
+                    ChatEventVO.builder()
+                            .eventType(ChatEventTypeEnum.STOP.getValue())
+                            .build()
+            );
+        }
+
+        @Override
+        public String process(String question, String sessionId) {
+            return "";
+        }
+
+        @Override
+        public AgentTypeEnum getAgentType() {
+            return AgentTypeEnum.CONSULT;
+        }
+
+        @Override
+        public void stop(String sessionId) {
+        }
     }
 }
