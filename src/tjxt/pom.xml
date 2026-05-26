@@ -50,18 +50,18 @@
         <mybatis-plus.version>3.5.9</mybatis-plus.version>
         <hutool.version>5.8.36</hutool.version>
         <swagger.version>2.2.19</swagger.version>
-        <mysql.version>8.0.33</mysql.version>
+        <mysql.version>8.2.0</mysql.version>
         <ali.sdk.core.version>4.6.0</ali.sdk.core.version>
         <ali.sdk.kms.version>2.10.1</ali.sdk.kms.version>
         <ali.sdk.oss.version>3.18.5</ali.sdk.oss.version>
         <ali.sdk.pay.version>4.40.771.ALL</ali.sdk.pay.version>
         <tencent.cloud.version>3.1.1458</tencent.cloud.version>
-        <redisson.version>3.13.6</redisson.version>
+        <redisson.version>3.22.0</redisson.version>
         <elasticsearch.version>7.12.1</elasticsearch.version>
         <!--<elasticsearch.version>8.13.4</elasticsearch.version>-->
         <tencent.sdk.cos.version>5.6.89</tencent.sdk.cos.version>
         <tencent.sdk.vod.version>2.1.5</tencent.sdk.vod.version>
-        <xxl-job-version>2.3.1</xxl-job-version>
+        <xxl-job-version>3.4.0</xxl-job-version>
         <seata-version>1.5.1</seata-version>
     </properties>
     <!-- 对依赖包进行管理 -->
@@ -84,8 +84,8 @@
             </dependency>
             <!-- 数据库驱动包管理 -->
             <dependency>
-                <groupId>mysql</groupId>
-                <artifactId>mysql-connector-java</artifactId>
+                <groupId>com.mysql</groupId>
+                <artifactId>mysql-connector-j</artifactId>
                 <version>${mysql.version}</version>
             </dependency>
 
