@@ -9,6 +9,11 @@ This document clarifies which content is required in the main repository and whi
 - `LICENSE`
 - `.github/workflows/`
 - `docs/resource-index.md`
+- `docs/production-launch-plan.md`
+- `docs/release-checklist.md`
+- `docs/ops/runbook.md`
+- `docs/security/agent-governance.md`
+- `docs/enterprise-roadmap-300.md`
 - `docs/assets/screenshots/` lightweight README screenshots
 
 ## Externalized assets (not tracked in main repo)

@@ -6,6 +6,8 @@
 
 用户提问 -> RouteAgent 意图识别 -> 9 种子 Agent 分发 -> AgentHarness 治理业务动作 -> Runtime 调用课程/订单/KnowledgeOps -> Observation 写入 TRACE/PARAM -> SSE 流式返回 -> 前端课程/订单卡片与工具轨迹渲染。
 
+上线链路：RouteAgent -> 子Agent -> AgentHarness -> Runtime -> Observation -> SSE。
+
 [![CI](https://github.com/however-yir/tianji-ai-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/however-yir/tianji-ai-agent/actions/workflows/ci.yml)
 [![Java](https://img.shields.io/badge/Java-17-007396?logo=openjdk)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.5-6DB33F?logo=springboot)](https://spring.io/projects/spring-boot)
@@ -117,8 +119,15 @@ sequenceDiagram
 │   ├── agent-design.md
 │   ├── agent-harness.md
 │   ├── demo-script.md
+│   ├── production-launch-plan.md
+│   ├── release-checklist.md
+│   ├── enterprise-roadmap-300.md
 │   ├── mcp-extension-guide.md
 │   ├── multi-tenant-isolation.md
+│   ├── ops/
+│   │   └── runbook.md
+│   ├── security/
+│   │   └── agent-governance.md
 │   ├── observability/
 │   │   └── slo-and-alerting.md
 │   └── assets/screenshots
@@ -254,6 +263,12 @@ RouteAgent 评测：
 python3 scripts/evaluation/evaluate_route_agent.py --min-accuracy 0.85
 ```
 
+企业级上线校验：
+
+```bash
+bash scripts/validate_enterprise_launch.sh
+```
+
 示例输出会包含 `Accuracy` 和混淆矩阵；默认离线模式用于本地快速回归，也可以传 `--api-url http://127.0.0.1:8094` 读取真实 `/chat` SSE 的 `ROUTE(1004)` 事件。
 
 手工集成测试依赖真实模型、Nacos、业务中间件和密钥，默认通过 JUnit Tag 排除：
@@ -270,6 +285,7 @@ mvn -B -ntp -f src/tjxt/tj-aigc/pom.xml -Pmanual-integration-tests test
 - `tj-aigc`：依赖链安装、单元测试、JaCoCo 覆盖率报告上传
 - `my-spring-ai`：编译打包
 - Python smoke tests：仓库文档和脚本基础检查
+- Enterprise launch readiness：生产上线方案、发布清单、Runbook、Agent 治理和 300 条路线图检查
 
 非关键扫描保留为 advisory job（`continue-on-error: true`），避免噪声挡住核心链路：
 
@@ -298,6 +314,8 @@ Spring AI 版本兼容说明见 [docs/spring-ai-version-note.md](docs/spring-ai-
 - **SLO 定义与告警规则**：见 [docs/observability/slo-and-alerting.md](docs/observability/slo-and-alerting.md)
 
 ## 部署
+
+企业级上线方案见 [docs/production-launch-plan.md](docs/production-launch-plan.md)，发布前逐项确认 [docs/release-checklist.md](docs/release-checklist.md)。运行期故障处理见 [docs/ops/runbook.md](docs/ops/runbook.md)，Agent 安全边界见 [docs/security/agent-governance.md](docs/security/agent-governance.md)，完整企业化 backlog 见 [docs/enterprise-roadmap-300.md](docs/enterprise-roadmap-300.md)。
 
 ### Helm Chart
 

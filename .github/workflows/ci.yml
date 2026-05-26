@@ -45,6 +45,9 @@ jobs:
           python -m pip install pytest
           pytest -q tests
 
+      - name: Enterprise launch readiness
+        run: bash scripts/validate_enterprise_launch.sh
+
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
