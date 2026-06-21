@@ -24,7 +24,6 @@ required_files=(
   "docs/release-checklist.md"
   "docs/ops/runbook.md"
   "docs/security/agent-governance.md"
-  "docs/enterprise-roadmap-300.md"
   "docs/observability/slo-and-alerting.md"
   "docs/agent-harness.md"
   "helm/tianji-ai-agent/Chart.yaml"
@@ -39,15 +38,9 @@ for file in "${required_files[@]}"; do
   require_file "$file"
 done
 
-roadmap_count="$(grep -Ec '^- \[ \] E[0-9]{3} ' "$ROOT/docs/enterprise-roadmap-300.md")"
-if [[ "$roadmap_count" -ne 300 ]]; then
-  fail "expected 300 enterprise roadmap items, found $roadmap_count"
-fi
-
 require_pattern 'RouteAgent -> 子Agent -> AgentHarness -> Runtime -> Observation -> SSE' "README.md"
 require_pattern 'production-launch-plan\.md' "README.md"
 require_pattern 'release-checklist\.md' "README.md"
-require_pattern 'enterprise-roadmap-300\.md' "README.md"
 require_pattern 'course\.query' "src/tjxt/tj-aigc/src/main/java/com/tianji/aigc/harness/ActionSchema.java"
 require_pattern 'course\.search' "src/tjxt/tj-aigc/src/main/java/com/tianji/aigc/harness/ActionSchema.java"
 require_pattern 'order\.preview' "src/tjxt/tj-aigc/src/main/java/com/tianji/aigc/harness/ActionSchema.java"

@@ -1,4 +1,3 @@
-import re
 from pathlib import Path
 
 
@@ -15,7 +14,6 @@ def test_enterprise_launch_docs_exist_and_are_linked():
         "docs/release-checklist.md",
         "docs/ops/runbook.md",
         "docs/security/agent-governance.md",
-        "docs/enterprise-roadmap-300.md",
     ]
     for doc in required_docs:
         assert (REPO_ROOT / doc).is_file(), doc
@@ -23,12 +21,6 @@ def test_enterprise_launch_docs_exist_and_are_linked():
     readme = read_text("README.md")
     for doc in required_docs:
         assert doc in readme
-
-
-def test_enterprise_roadmap_has_exactly_300_items():
-    roadmap = read_text("docs/enterprise-roadmap-300.md")
-    items = re.findall(r"^- \[ \] E\d{3} ", roadmap, flags=re.MULTILINE)
-    assert len(items) == 300
 
 
 def test_agent_harness_and_operational_guards_are_documented():

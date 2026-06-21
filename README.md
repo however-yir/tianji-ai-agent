@@ -121,7 +121,6 @@ sequenceDiagram
 │   ├── demo-script.md
 │   ├── production-launch-plan.md
 │   ├── release-checklist.md
-│   ├── enterprise-roadmap-300.md
 │   ├── mcp-extension-guide.md
 │   ├── multi-tenant-isolation.md
 │   ├── ops/
@@ -315,7 +314,7 @@ Spring AI 版本兼容说明见 [docs/spring-ai-version-note.md](docs/spring-ai-
 
 ## 部署
 
-企业级上线方案见 [docs/production-launch-plan.md](docs/production-launch-plan.md)，发布前逐项确认 [docs/release-checklist.md](docs/release-checklist.md)。运行期故障处理见 [docs/ops/runbook.md](docs/ops/runbook.md)，Agent 安全边界见 [docs/security/agent-governance.md](docs/security/agent-governance.md)，完整企业化 backlog 见 [docs/enterprise-roadmap-300.md](docs/enterprise-roadmap-300.md)。
+企业级上线方案见 [docs/production-launch-plan.md](docs/production-launch-plan.md)，发布前逐项确认 [docs/release-checklist.md](docs/release-checklist.md)。运行期故障处理见 [docs/ops/runbook.md](docs/ops/runbook.md)，Agent 安全边界见 [docs/security/agent-governance.md](docs/security/agent-governance.md)。
 
 ### Helm Chart
 
