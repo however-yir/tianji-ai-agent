@@ -87,11 +87,9 @@ public class WebSecurityConfig implements WebMvcConfigurer {
             return counter.count.get() > MAX_REQUESTS_PER_MINUTE;
         }
 
-        private String getClientIp(HttpServletRequest req) {
-            String xff = req.getHeader("X-Forwarded-For");
-            if (xff != null && !xff.isBlank()) {
-                return xff.split(",")[0].trim();
-            }
+        String getClientIp(HttpServletRequest req) {
+            // X-Forwarded-For is client-controlled unless a trusted proxy is configured
+            // to overwrite it. Use the transport peer as the safe default.
             return req.getRemoteAddr();
         }
 

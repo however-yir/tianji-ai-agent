@@ -40,8 +40,8 @@ public class AccountAuthFilter implements GlobalFilter, Ordered {
 
         // 2.判断是否是无需登录的路径
         if(isExcludePath(antPath)){
-            // 直接放行
-            return chain.filter(exchange);
+            // 客户端不能伪造供资源服务使用的内部身份头
+            return chain.filter(clearRelayHeaders(exchange));
         }
 
         // 3.尝试获取用户信息
@@ -51,12 +51,16 @@ public class AccountAuthFilter implements GlobalFilter, Ordered {
 
         // 4.如果用户是登录状态，尝试更新请求头，传递用户信息
         if (r.success()) {
-            exchange.mutate()
-                    .request(builder -> builder
-                            .header(USER_HEADER, r.getData().getUserId().toString())
-                            .header(TOKEN_HEADER, token)
-                    )
+            exchange = exchange.mutate()
+                    .request(builder -> builder.headers(headers -> {
+                        headers.remove(USER_HEADER);
+                        headers.remove(TOKEN_HEADER);
+                        headers.set(USER_HEADER, r.getData().getUserId().toString());
+                        headers.set(TOKEN_HEADER, token);
+                    }))
                     .build();
+        } else {
+            exchange = clearRelayHeaders(exchange);
         }
 
         // 5.校验权限
@@ -64,6 +68,15 @@ public class AccountAuthFilter implements GlobalFilter, Ordered {
 
         // 6.放行
         return chain.filter(exchange);
+    }
+
+    private ServerWebExchange clearRelayHeaders(ServerWebExchange exchange) {
+        return exchange.mutate()
+                .request(builder -> builder.headers(headers -> {
+                    headers.remove(USER_HEADER);
+                    headers.remove(TOKEN_HEADER);
+                }))
+                .build();
     }
 
     private boolean isExcludePath(String antPath) {
