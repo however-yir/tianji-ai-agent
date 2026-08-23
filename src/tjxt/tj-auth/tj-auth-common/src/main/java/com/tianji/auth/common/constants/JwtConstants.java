@@ -7,9 +7,10 @@ public class JwtConstants {
     public static final String PAYLOAD_JTI_KEY = "jti";
 
     public static final String JWT_REDIS_KEY_PREFIX = "jwt:uid:";
-    // token过期时间，测试期间改为 30天，正常是5分钟
-    // public static final Duration JWT_TOKEN_TTL = Duration.ofMinutes(5);
-    public static final Duration JWT_TOKEN_TTL = Duration.ofMinutes(60 * 24 * 30);
+    // token过期时间：access-token 短 TTL（30分钟）。
+    // 过期后由客户端携带 refresh-token（HttpOnly Cookie，见 JwtTool.createRefreshToken / AccountController 刷新接口）换发新 token；
+    // 不能恢复此前测试期使用的 30 天长 TTL——access-token 无吊销机制，长期有效会放大泄露风险。
+    public static final Duration JWT_TOKEN_TTL = Duration.ofMinutes(30);
     public static final Duration JWT_REFRESH_TTL = Duration.ofMinutes(30);
 
     public static final Duration JWT_REMEMBER_ME_TTL = Duration.ofDays(7);

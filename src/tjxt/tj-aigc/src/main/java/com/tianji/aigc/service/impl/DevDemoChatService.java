@@ -110,15 +110,17 @@ public class DevDemoChatService implements ChatService {
     private Map<String, Object> buildParams(String question, String sessionId, AttachmentContext attachmentContext) {
         Map<String, Object> payload = new LinkedHashMap<>(devDemoSessionStore.defaultParamPayload(sessionId));
         payload.put("timestamp", LocalDateTime.now().toString());
+        // 与 buildReply 一致地做空值兜底，避免空 question 触发 NPE
+        String normalized = question == null ? "" : question;
         if (attachmentContext != null && attachmentContext.hasSources()) {
             payload.putAll(attachmentContext.toParamMap());
             payload.put("capability", "attachment-qa");
-        } else if (question.contains("附件上下文")) {
-            payload.put("sources", extractAttachmentNames(question));
+        } else if (normalized.contains("附件上下文")) {
+            payload.put("sources", extractAttachmentNames(normalized));
             payload.put("capability", "attachment-demo");
-        } else if (question.contains("流程") || question.toLowerCase().contains("mermaid")) {
+        } else if (normalized.contains("流程") || normalized.toLowerCase().contains("mermaid")) {
             payload.put("capability", "mermaid-demo");
-        } else if (question.contains("公式") || question.toLowerCase().contains("math")) {
+        } else if (normalized.contains("公式") || normalized.toLowerCase().contains("math")) {
             payload.put("capability", "math-demo");
         } else {
             payload.put("capability", "general-demo");

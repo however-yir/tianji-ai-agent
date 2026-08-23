@@ -10,6 +10,7 @@ import com.tianji.aigc.attachment.AttachmentDocument;
 import com.tianji.aigc.attachment.AttachmentSource;
 import com.tianji.aigc.service.AttachmentService;
 import com.tianji.aigc.vo.AttachmentUploadVO;
+import com.tianji.common.exceptions.BadRequestException;
 import com.tianji.common.utils.UserContext;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
@@ -139,11 +140,12 @@ public class InMemoryAttachmentService implements AttachmentService {
     }
 
     private void validateFile(MultipartFile file) {
+        // 使用 BadRequestException 而非 IllegalArgumentException，确保校验文案以 400 返回给用户而不是落入兜底 500
         if (file.getSize() > MAX_FILE_SIZE) {
-            throw new IllegalArgumentException("附件超过 8MB，请压缩后再上传。");
+            throw new BadRequestException("附件超过 8MB，请压缩后再上传。");
         }
         if (file.getSize() == 0) {
-            throw new IllegalArgumentException("附件为空，请检查后重新上传。");
+            throw new BadRequestException("附件为空，请检查后重新上传。");
         }
         // 文件魔数校验：防止扩展名伪造
         try {
@@ -151,21 +153,21 @@ public class InMemoryAttachmentService implements AttachmentService {
             String fileName = StrUtil.blankToDefault(file.getOriginalFilename(), "").toLowerCase(Locale.ROOT);
             if (fileName.endsWith(".pdf") && !(header.length >= 4 && header[0] == 0x25 && header[1] == 0x50
                     && header[2] == 0x44 && header[3] == 0x46)) {
-                throw new IllegalArgumentException("文件内容与 PDF 扩展名不匹配。");
+                throw new BadRequestException("文件内容与 PDF 扩展名不匹配。");
             }
             if (fileName.endsWith(".docx") && !(header.length >= 4 && header[0] == 0x50 && header[1] == 0x4B)) {
-                throw new IllegalArgumentException("文件内容与 DOCX 扩展名不匹配（需要 PK 头）。");
+                throw new BadRequestException("文件内容与 DOCX 扩展名不匹配（需要 PK 头）。");
             }
             if ((fileName.endsWith(".png")) && !(header.length >= 8 && header[0] == (byte) 0x89
                     && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47)) {
-                throw new IllegalArgumentException("文件内容与 PNG 扩展名不匹配。");
+                throw new BadRequestException("文件内容与 PNG 扩展名不匹配。");
             }
             if ((fileName.endsWith(".jpg") || fileName.endsWith(".jpeg"))
                     && !(header.length >= 2 && header[0] == (byte) 0xFF && header[1] == (byte) 0xD8)) {
-                throw new IllegalArgumentException("文件内容与 JPEG 扩展名不匹配。");
+                throw new BadRequestException("文件内容与 JPEG 扩展名不匹配。");
             }
         } catch (IOException e) {
-            throw new IllegalArgumentException("无法读取文件内容。", e);
+            throw new BadRequestException(400, "无法读取文件内容。", e);
         }
     }
 
@@ -217,7 +219,9 @@ public class InMemoryAttachmentService implements AttachmentService {
 
     private String extractImageText(MultipartFile file) throws IOException {
         Path tempDir = Files.createTempDirectory("aigc-ocr-");
-        Path imagePath = tempDir.resolve(StrUtil.blankToDefault(file.getOriginalFilename(), "image.png"));
+        // 安全修复：临时文件名由服务端生成（扩展名走白名单），绝不能使用客户端可控的 originalFilename 拼路径，
+        // 否则上传名形如 ../../xxx.png 可写入临时目录外的任意路径。
+        Path imagePath = tempDir.resolve("image" + safeImageExtension(file));
         Path outputBase = tempDir.resolve("ocr-result");
         try {
             Files.write(imagePath, file.getBytes());
@@ -263,6 +267,16 @@ public class InMemoryAttachmentService implements AttachmentService {
                 // ignore cleanup failure
             }
         }
+    }
+
+    private String safeImageExtension(MultipartFile file) {
+        String lowerName = StrUtil.blankToDefault(file.getOriginalFilename(), "").toLowerCase(Locale.ROOT);
+        for (String extension : List.of(".png", ".jpg", ".jpeg", ".webp", ".bmp")) {
+            if (lowerName.endsWith(extension)) {
+                return extension;
+            }
+        }
+        return ".png";
     }
 
     private boolean isImage(MultipartFile file, String lowerName) {

@@ -7,12 +7,15 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.data.redis.core.BoundListOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
+import java.time.Duration;
 import java.util.List;
 
 public class RedisChatMemory implements ChatMemory {
 
     // 默认redis中key的前缀
     public static final String DEFAULT_PREFIX = "CHAT:";
+    // 会话记忆 TTL：滚动续期，避免废弃会话的记忆列表在 Redis 中无界增长
+    private static final Duration MEMORY_TTL = Duration.ofDays(30);
 
     private final StringRedisTemplate stringRedisTemplate;
     private final String prefix;
@@ -33,8 +36,10 @@ public class RedisChatMemory implements ChatMemory {
         }
         String key = this.getKey(conversationId);
         var listOperations = this.stringRedisTemplate.boundListOps(key);
-        // 将消息序列化后写入到redis中
+        // 将消息序列化后写入redis中
         messages.forEach(message -> listOperations.rightPush(MessageUtil.toJson(message)));
+        // 写入后滚动续期 TTL
+        this.stringRedisTemplate.expire(key, MEMORY_TTL);
     }
 
     private String getKey(String conversationId) {

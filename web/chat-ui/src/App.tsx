@@ -694,10 +694,16 @@ export default function App() {
       const attachmentsNeedingUpload = pendingAttachments.filter((item) => item.file);
 
       if (runMode === "api" && attachmentsNeedingUpload.length) {
-        const uploadResult = await uploadAttachments(attachmentsNeedingUpload, token);
-        attachmentIds = uploadResult.uploadedIds;
-        messageAttachments = uploadResult.uploadedItems;
-        setBanner(createBanner("info", "附件已上传，正在基于解析内容检索相关片段。"));
+        try {
+          const uploadResult = await uploadAttachments(attachmentsNeedingUpload, token);
+          attachmentIds = uploadResult.uploadedIds;
+          messageAttachments = uploadResult.uploadedItems;
+          setBanner(createBanner("info", "附件已上传，正在基于解析内容检索相关片段。"));
+        } catch (error) {
+          // 上传失败时明确提示并保留输入与附件，不能静默丢弃
+          setBanner(createBanner("warning", `附件上传失败：${errorToMessage(error)}。请检查文件大小/格式后重试。`));
+          return;
+        }
       }
 
       const questionWithAttachments = buildAttachmentContext(resolvedPrompt, pendingAttachments);

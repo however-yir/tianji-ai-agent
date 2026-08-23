@@ -13,9 +13,13 @@ public class WeatherService {
 
     @Tool(description = "根据城市id查询天气信息")
     public WeatherDTO getWeather(@ToolParam(description = "城市id") String cityId) {
+        // cityId 直接拼进 URL，必须是纯数字，防止路径注入/SSRF；并给 HTTP 请求设置超时
+        if (cityId == null || !cityId.matches("\\d{1,9}")) {
+            throw new IllegalArgumentException("城市id必须是1-9位数字");
+        }
         // 通过http请求获取天气信息，并且通过json数据解析为WeatherDTO对象
         String url = "http://t.weather.itboy.net/api/weather/city/" + cityId;
-        String data = HttpUtil.get(url);
+        String data = HttpUtil.get(url, 5000);
         JSONObject jsonObject = JSONUtil.parseObj(data);
 
         return WeatherDTO.builder()

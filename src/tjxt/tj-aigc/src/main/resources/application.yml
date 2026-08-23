@@ -17,6 +17,11 @@ spring:
     name: aigc-service
   main:
     allow-circular-references: true # 允许循环引用
+  servlet:
+    multipart:
+      # 与附件服务 8MB 校验上限对齐：不配置时 Boot 默认 1MB 会先拒绝且用户看不到真实原因
+      max-file-size: ${AIGC_MULTIPART_MAX_FILE_SIZE:8MB}
+      max-request-size: ${AIGC_MULTIPART_MAX_REQUEST_SIZE:20MB}
   flyway:
     enabled: ${FLYWAY_ENABLED:true}
     locations: classpath:db/migration
@@ -39,7 +44,8 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus,metrics,env
+        # env 端点未授权暴露配置/密钥环境变量，已移除；如需排查请临时开启并配合访问控制
+        include: health,info,prometheus,metrics
   endpoint:
     health:
       show-details: when_authorized
@@ -53,6 +59,10 @@ management:
       percentiles-histogram:
         http.server.requests: true
 tj:
+  aigc:
+    # /embedding 写入接口默认关闭：任意登录用户可写全局共享向量库会造成知识库投毒
+    embedding-write:
+      enabled: ${AIGC_EMBEDDING_WRITE_ENABLED:false}
   swagger:
     enable: true
     package-path: com.tianji.aigc.controller
@@ -81,7 +91,6 @@ tj:
     streaming:
       # SSE 背压缓冲区大小
       buffer-size: ${AI_STREAM_BUFFER_SIZE:256}
-    prompt:
     prompt:
       system:
         chat:

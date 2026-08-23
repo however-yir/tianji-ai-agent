@@ -48,8 +48,8 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
     @Override
     public SessionVO createSession(Integer num) {
         SessionVO sessionVO = BeanUtil.toBean(sessionProperties, SessionVO.class);
-        // 随机生成指定数量的示例
-        sessionVO.setExamples(RandomUtil.randomEleList(sessionVO.getExamples(), num));
+        // 随机生成指定数量的示例（对 num 做钳制，避免请求参数越界导致随机抽样异常）
+        sessionVO.setExamples(pickExamples(sessionVO.getExamples(), num));
         // 生成随机id
         sessionVO.setSessionId(IdUtil.simpleUUID());
 
@@ -69,7 +69,15 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
      */
     @Override
     public List<SessionVO.Example> hotExamples(Integer num) {
-        return RandomUtil.randomEleList(sessionProperties.getExamples(), num);
+        return pickExamples(sessionProperties.getExamples(), num);
+    }
+
+    private List<SessionVO.Example> pickExamples(List<SessionVO.Example> examples, Integer num) {
+        if (CollUtil.isEmpty(examples)) {
+            return List.of();
+        }
+        int count = Math.max(1, Math.min(num == null ? 3 : num, examples.size()));
+        return RandomUtil.randomEleList(examples, count);
     }
 
     @Override

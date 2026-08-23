@@ -162,7 +162,7 @@ sequenceDiagram
 | 课程详情 | `介绍一下 1589905661084430337 这门课适合谁，价格多少` | `RouteAgent -> ConsultAgent -> AgentHarness -> course.query` | 课程详情卡片、工具轨迹 |
 | 预下单 | `我要购买课程 1589905661084430337，帮我生成确认订单` | `RouteAgent -> BuyAgent -> AgentHarness -> order.preview` | 订单确认卡片、工具轨迹 |
 | 知识问答 | `Java 中 Redis 缓存穿透是什么，怎么处理` | `RouteAgent -> KnowledgeAgent` | 流式知识回答 |
-| 语音/多模态入口 | `上传一张课程截图，或用语音问“这门课适合我吗”` | `/attachment/upload`、`/audio/stt`、`/audio/tts-stream`、`/chat` | 附件引用、语音输入、流式回复 |
+| 语音/多模态入口 | `上传一张课程截图，或用语音问“这门课适合我吗”` | `/attachment/upload`、`/chat`（语音输入走浏览器 Web Speech API，后端 `/audio/*` 能力当前未接入前端） | 附件引用、语音输入、流式回复 |
 
 证据索引见 [docs/evidence/README.md](docs/evidence/README.md)，包含运行路径、截图、Agent 设计文档、CI 和发布信息。
 
@@ -178,8 +178,8 @@ sequenceDiagram
 | `POST /chat` | SSE 流式 Agent 对话 | 主输入框发送 |
 | `POST /chat/stop` | 停止当前生成 | 停止按钮 |
 | `POST /attachment/upload` | 上传文档/图片并返回附件 ID | 附件按钮 |
-| `POST /audio/stt` | 语音转文本 | 语音输入入口 |
-| `POST /audio/tts-stream` | 文本转语音 | 语音播放入口 |
+| `POST /audio/stt` | 语音转文本（后端能力，前端语音输入当前走浏览器 Web Speech API，未调用此接口） | 暂无 |
+| `POST /audio/tts-stream` | 文本转语音（后端能力，前端当前未接入） | 暂无 |
 
 关键类：
 
@@ -236,6 +236,14 @@ docker compose -f docker-compose.dev.yml up --build
 - 演示 Token：`dev-demo-token`
 - 本地演示默认关闭登录拦截
 - 前端默认进入 demo 模式，也可以切到真实 API 模式联调
+
+安全注意事项（直连鉴权边界）：
+
+- `dev-demo` 是无鉴权的本地演示模式，切勿对外网暴露。
+- 非 `dev-demo` profile（如 `local`）下，服务的用户身份来自网关（tj-gateway）鉴权后注入的 `user-info` 请求头（见 `UserInfoInterceptor`）。直接把 8094 端口暴露给不可信网络时，攻击者可伪造 `user-info` 头冒充任意用户，因此生产/联调部署必须：
+  1. 通过 tj-gateway 访问（网关负责 JWT 校验并注入身份头）；或
+  2. 将服务置于内网/ClusterIP（Helm 默认即 ClusterIP），仅允许可信来源直连。
+- 不要在开启登录拦截的同时将 8094 发布到公网；临时联调请用防火墙/安全组限制来源。
 
 ## 本地验证
 

@@ -40,7 +40,7 @@ http://127.0.0.1:8094
 | 2 | 课程详情查询 | `介绍一下 1589905661084430337 这门课适合谁，价格多少` | `CONSULT` | `CourseTools.queryCourseById` | 课程名称、价格、适用人群 |
 | 3 | 预下单 | `我要购买课程 1589905661084430337，帮我生成确认订单` | `BUY` | `OrderTools.prePlaceOrder` | 订单金额、优惠、实付、课程 ID |
 | 4 | 知识库问答 | `Java 中 Redis 缓存穿透是什么，怎么处理` | `KNOWLEDGE` | 可选 RAG Advisor | 流式知识回答、历史会话保存 |
-| 5 | 语音/多模态入口 | `上传一张课程截图，或用语音问“这门课适合我吗”` | `CONSULT` 或 `KNOWLEDGE` | `/attachment/upload`、`/audio/stt`、`/audio/tts-stream` | 附件引用、语音输入、语音播放入口 |
+| 5 | 语音/多模态入口 | `上传一张课程截图，或用语音问“这门课适合我吗”` | `CONSULT` 或 `KNOWLEDGE` | `/attachment/upload`、`/chat`（语音输入走浏览器 Web Speech API，`/audio/*` 后端能力当前未接入前端） | 附件引用、语音输入、流式回复 |
 
 ## 前端和后端对应关系
 
@@ -52,8 +52,8 @@ http://127.0.0.1:8094
 | 发送问题 | `runApiStreaming` | `POST /chat` | RouteAgent 路由，子 Agent 流式输出 |
 | 停止生成 | `handleStopStreaming` | `POST /chat/stop?sessionId=...` | 清理生成状态和附件上下文 |
 | 上传附件 | `uploadAttachments` | `POST /attachment/upload` | 解析文本/PDF/DOCX/图片，返回 attachmentId |
-| 语音转文本 | 浏览器语音入口或 API 扩展 | `POST /audio/stt` | 把音频文件转成文本问题 |
-| 文本转语音 | 语音播放入口 | `POST /audio/tts-stream` | 把助手文本转成音频流 |
+| 语音输入 | `handleStartVoice`（浏览器 Web Speech API） | 无（后端 `/audio/stt` 能力保留，前端当前未调用） | 识别结果填入输入框 |
+| 文本转语音 | 暂无前端入口 | `POST /audio/tts-stream`（后端能力保留，前端当前未调用） | 把助手文本转成音频流 |
 
 ## SSE 事件协议
 

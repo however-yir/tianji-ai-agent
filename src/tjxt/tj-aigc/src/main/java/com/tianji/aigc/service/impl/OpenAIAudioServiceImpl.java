@@ -18,6 +18,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter
 import reactor.core.publisher.Flux;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 @Service
@@ -34,19 +35,35 @@ public class OpenAIAudioServiceImpl implements AudioService {
         log.info("开始语音合成, 文本内容：{}", text);
         SpeechPrompt speechPrompt = new SpeechPrompt(text);
         Flux<SpeechResponse> responseStream = openAiAudioSpeechModel.stream(speechPrompt);
+        // 用 completed 标记保证 emitter 只完成一次：send 失败后订阅仍在推进、
+        // 后续 send/complete 会以 IllegalStateException 二次抛出，污染 Reactor 线程
+        AtomicBoolean completed = new AtomicBoolean(false);
         // 订阅响应流并发送数据
         responseStream.subscribe(
                 speechResponse -> {
+                    if (completed.get()) {
+                        return;
+                    }
                     try {
                         // 获取响应输出的数据，并发送到响应体中
                         byte[] audioBytes = speechResponse.getResult().getOutput();
                         emitter.send(audioBytes);
-                    } catch (IOException e) {
-                        emitter.completeWithError(e);
+                    } catch (IOException | IllegalStateException e) {
+                        if (completed.compareAndSet(false, true)) {
+                            emitter.completeWithError(e);
+                        }
                     }
                 },
-                emitter::completeWithError,
-                emitter::complete
+                error -> {
+                    if (completed.compareAndSet(false, true)) {
+                        emitter.completeWithError(error);
+                    }
+                },
+                () -> {
+                    if (completed.compareAndSet(false, true)) {
+                        emitter.complete();
+                    }
+                }
         );
         return emitter;
     }

@@ -103,7 +103,9 @@ public class SignUtils {
             log.error("failed to decode url or query path");
             throw new RuntimeException("Bad encoded url path or query string");
         } catch (NoSuchAlgorithmException e) {
-            log.error("MD5 algorithm not available", e);
+            // JVM 必须提供 SHA-256；不能吞掉异常返回空串 token，否则调用方会拿到看似合法实则无效的凭据
+            log.error("SHA-256 algorithm not available", e);
+            throw new CommonException("SHA-256 algorithm not available", e);
         }
 
         return token;
@@ -132,9 +134,11 @@ public class SignUtils {
         }
 
         try {
+            // token 格式：v1-{AK}-{ExpireTime}-{Signature}，其中 AK 自身可能包含 "-"，
+            // 因此不能用 split 后 length==4 判断，而是从两端解析：末段=签名，倒数第二段=过期时间，中间=AK
             String[] tokenParts = token.split("-");
 
-            if (tokenParts.length != 4) {
+            if (tokenParts.length < 4) {
                 log.warn("auth_reject method={} uri={} tokenHash={} reason=invalid_format", method, uri, tokenHash);
                 return false;
             }
@@ -144,7 +148,13 @@ public class SignUtils {
                 return false;
             }
 
-            long expireTime = Long.parseLong(tokenParts[2]);
+            long expireTime;
+            try {
+                expireTime = Long.parseLong(tokenParts[tokenParts.length - 2]);
+            } catch (NumberFormatException e) {
+                log.warn("auth_reject method={} uri={} tokenHash={} reason=invalid_expire_time", method, uri, tokenHash);
+                return false;
+            }
             if (expireTime < System.currentTimeMillis()) {
                 log.warn("auth_reject method={} uri={} tokenHash={} reason=expired", method, uri, tokenHash);
                 return false;

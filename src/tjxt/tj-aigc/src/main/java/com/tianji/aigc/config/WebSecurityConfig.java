@@ -56,6 +56,8 @@ public class WebSecurityConfig implements WebMvcConfigurer {
     static class RateLimitFilter implements Filter {
         private static final int MAX_REQUESTS_PER_MINUTE = 60;
         private static final long WINDOW_MS = 60_000L;
+        /** 计数 Map 超过该规模时触发一次过期淘汰，防止海量来源 IP 导致无界增长 */
+        private static final int MAX_TRACKED_IPS = 4096;
 
         private final Map<String, WindowCounter> counters = new ConcurrentHashMap<>();
 
@@ -77,6 +79,10 @@ public class WebSecurityConfig implements WebMvcConfigurer {
 
         private boolean isRateLimited(String ip) {
             long now = System.currentTimeMillis();
+            if (counters.size() > MAX_TRACKED_IPS) {
+                // 淘汰窗口外的陈旧计数，避免 Map 无界增长
+                counters.entrySet().removeIf(entry -> now - entry.getValue().windowStart > WINDOW_MS);
+            }
             WindowCounter counter = counters.compute(ip, (k, v) -> {
                 if (v == null || now - v.windowStart > WINDOW_MS) {
                     return new WindowCounter(now, new AtomicInteger(1));

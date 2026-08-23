@@ -76,7 +76,11 @@ public class AgentServiceImpl implements ChatService {
         // Step 4: Route to target agent
         Agent agent = this.findAgentByType(agentTypeEnum);
         if (null == agent) {
-            log.warn("[Agent路由] 未找到Agent类型={}, 回退到直接回复, sessionId={}", agentTypeEnum, sessionId);
+            // nextAgent 未知时回退到人工兜底 Agent，保证用户一定能拿到回答，而不是只有路由事件+STOP
+            log.warn("[Agent路由] 未找到Agent类型={}, 回退到人工兜底Agent, sessionId={}", agentTypeEnum, sessionId);
+            agent = this.findAgentByType(AgentTypeEnum.HUMAN_HANDOFF);
+        }
+        if (null == agent) {
             return Flux.just(routeEvent, AbstractAgent.STOP_EVENT);
         }
 
@@ -130,9 +134,13 @@ public class AgentServiceImpl implements ChatService {
                 String reason = String.valueOf(parsed.getOrDefault("reason",
                         parsed.getOrDefault("routeReason", "")));
                 String routeReason = String.valueOf(parsed.getOrDefault("routeReason", reason));
-                String nextAgent = String.valueOf(parsed.getOrDefault("nextAgent", raw));
+                // nextAgent 缺失时不能回退整段原文（必然解析不出 Agent），改回人工兜底 Agent
+                Object nextAgentValue = parsed.get("nextAgent");
+                String nextAgent = nextAgentValue != null && StringUtils.hasText(String.valueOf(nextAgentValue))
+                        ? String.valueOf(nextAgentValue)
+                        : AgentTypeEnum.HUMAN_HANDOFF.getAgentName();
                 return new RouteResult(
-                        String.valueOf(parsed.getOrDefault("intent", raw)),
+                        String.valueOf(parsed.getOrDefault("intent", nextAgent)),
                         parseDouble(parsed.get("confidence"), 0.5),
                         reason,
                         routeReason,

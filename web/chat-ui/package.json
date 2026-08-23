@@ -12,6 +12,7 @@
     "test:run": "vitest run"
   },
   "dependencies": {
+    "dompurify": "^3.4.14",
     "highlight.js": "^11.11.1",
     "katex": "^0.16.22",
     "mermaid": "^11.15.0",

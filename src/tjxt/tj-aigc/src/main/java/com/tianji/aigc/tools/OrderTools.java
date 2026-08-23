@@ -31,18 +31,23 @@ public class OrderTools {
                                        ToolContext toolContext) {
         // 设置用户ID，用于身份验证，否在在Feign调用时会出现401错误
         UserContext.setUser(Convert.toLong(toolContext.getContext().get(Constant.USER_ID)));
-        // 大模型传入的ids，可能是int类型，所以转化为long类型，再调用Feign
-        List<Long> courseIds = CollStreamUtil.toList(ids, Number::longValue);
-        AgentAction action = new AgentAction(
-                "order.preview",
-                resolveAgentName(toolContext, DEFAULT_AGENT),
-                "OrderTools.prePlaceOrder",
-                resolveString(toolContext, Constant.REQUEST_ID),
-                resolveString(toolContext, Constant.SESSION_ID),
-                Convert.toLong(toolContext.getContext().get(Constant.USER_ID)),
-                Map.of("courseIds", courseIds)
-        );
-        return agentHarnessService.execute(action).resultAs(PrePlaceOrder.class);
+        try {
+            // 大模型传入的ids，可能是int类型，所以转化为long类型，再调用Feign
+            List<Long> courseIds = CollStreamUtil.toList(ids, Number::longValue);
+            AgentAction action = new AgentAction(
+                    "order.preview",
+                    resolveAgentName(toolContext, DEFAULT_AGENT),
+                    "OrderTools.prePlaceOrder",
+                    resolveString(toolContext, Constant.REQUEST_ID),
+                    resolveString(toolContext, Constant.SESSION_ID),
+                    Convert.toLong(toolContext.getContext().get(Constant.USER_ID)),
+                    Map.of("courseIds", courseIds)
+            );
+            return agentHarnessService.execute(action).resultAs(PrePlaceOrder.class);
+        } finally {
+            // 工具在流式/线程池线程上执行，必须清理 ThreadLocal，否则线程复用后会把当前用户身份泄漏给下一个请求
+            UserContext.removeUser();
+        }
     }
 
     private String resolveString(ToolContext toolContext, String key) {

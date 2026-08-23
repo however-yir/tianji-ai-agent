@@ -87,7 +87,8 @@ class OrderToolsHarnessTest {
                     assertThat(traceMap.get("actionType")).isEqualTo("order.preview");
                     assertThat(traceMap.get("success")).isEqualTo(true);
                 });
-        assertThat(UserContext.getUser()).isEqualTo(10001L);
+        // 工具执行结束后必须清理 ThreadLocal，避免线程复用导致跨用户身份污染
+        assertThat(UserContext.getUser()).isNull();
         verify(tradeClient).prePlaceOrder(List.of(1589905661084430337L));
     }
 

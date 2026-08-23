@@ -1,5 +1,6 @@
 import { isValidElement, useEffect, useMemo, useState } from "react";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import DOMPurify from "dompurify";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import rehypeKatex from "rehype-katex";
@@ -45,7 +46,8 @@ function MermaidBlock({ chart }: { chart: string }) {
         const mermaid = (await import("mermaid")).default;
         mermaid.initialize({
           startOnLoad: false,
-          securityLevel: "loose",
+          // strict 禁用 HTML 标签与 javascript: 链接，防止模型输出注入脚本
+          securityLevel: "strict",
           theme: "neutral",
           fontFamily: "Avenir Next, PingFang SC, Helvetica Neue, sans-serif",
         });
@@ -54,7 +56,8 @@ function MermaidBlock({ chart }: { chart: string }) {
         if (!active) {
           return;
         }
-        setSvg(nextSvg);
+        // 渲染产物仍要经 DOMPurify 净化后再注入 DOM（双保险）
+        setSvg(DOMPurify.sanitize(nextSvg, { USE_PROFILES: { svg: true, svgFilters: true } }));
         setError("");
       } catch {
         if (!active) {

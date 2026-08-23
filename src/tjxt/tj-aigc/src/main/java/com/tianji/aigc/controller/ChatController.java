@@ -11,6 +11,7 @@ import com.tianji.aigc.service.ChatService;
 import com.tianji.aigc.vo.ChatEventVO;
 import com.tianji.aigc.vo.TemplateVO;
 import com.tianji.common.annotations.NoWrapper;
+import com.tianji.common.exceptions.BadRequestException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -34,6 +35,10 @@ public class ChatController {
     @NoWrapper
     @PostMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ChatEventVO> chat(@RequestBody ChatDTO chatDTO) {
+        // 空问题在 dev-demo 会在 buildParams 处 NPE，在真实链路会把 null 传给模型；统一前置校验并返回 400
+        if (chatDTO.getQuestion() == null || chatDTO.getQuestion().isBlank()) {
+            throw new BadRequestException("问题内容不能为空。");
+        }
         AttachmentContext context = attachmentService.buildContext(chatDTO.getAttachmentIds(), chatDTO.getQuestion());
         AttachmentContextHolder.put(chatDTO.getSessionId(), context);
 
@@ -42,10 +47,14 @@ public class ChatController {
                 chatDTO.getModel(),
                 chatDTO.getTemperature()
         );
+        // set 与 clear 必须在同一线程：模型选项只在构建 Flux 链时被同步读取，
+        // 之前用 doFinally 在流终止线程清理会清错线程，导致 Tomcat 线程上的 ThreadLocal 残留污染下一个请求
         ModelOptionsHolder.set(options);
-
-        return this.chatService.chat(chatDTO.getQuestion(), chatDTO.getSessionId())
-                .doFinally(signal -> ModelOptionsHolder.clear());
+        try {
+            return this.chatService.chat(chatDTO.getQuestion(), chatDTO.getSessionId());
+        } finally {
+            ModelOptionsHolder.clear();
+        }
     }
 
     @PostMapping("/stop")

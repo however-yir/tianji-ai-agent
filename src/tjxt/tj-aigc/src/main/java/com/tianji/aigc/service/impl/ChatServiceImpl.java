@@ -32,6 +32,11 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 增强型智能体
+ * <p>
+ * 【未启用的遗留代码】注意：@Service 注解已被注释掉，此类当前不会注册为 Bean。
+ * 生产链路由 {@link AgentServiceImpl}（RouteAgent -> 子Agent 路由模式）承担 ChatService 职责；
+ * 本类仅作为旧版实现保留参考，请勿直接恢复 @Service——否则会与 AgentServiceImpl 形成
+ * ChatService 装配冲突（两个候选 Bean、无 @Primary）。若要启用需先处理 Bean 装配与职责划分。
  */
 // @Service
 @RequiredArgsConstructor

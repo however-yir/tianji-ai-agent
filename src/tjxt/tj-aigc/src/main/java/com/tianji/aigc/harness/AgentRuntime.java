@@ -46,9 +46,14 @@ public class AgentRuntime {
         if (action.userId() != null) {
             UserContext.setUser(action.userId());
         }
-        List<Long> courseIds = toLongList(action.input().get("courseIds"));
-        var orderConfirmVO = tradeClient.prePlaceOrder(courseIds);
-        return orderConfirmVO == null ? null : PrePlaceOrder.of(orderConfirmVO);
+        try {
+            List<Long> courseIds = toLongList(action.input().get("courseIds"));
+            var orderConfirmVO = tradeClient.prePlaceOrder(courseIds);
+            return orderConfirmVO == null ? null : PrePlaceOrder.of(orderConfirmVO);
+        } finally {
+            // 该方法可能在复用的流式线程上执行，必须清理 ThreadLocal，避免把当前用户身份泄漏给下一个请求
+            UserContext.removeUser();
+        }
     }
 
     private Map<String, Object> ragQuery(AgentAction action) {
