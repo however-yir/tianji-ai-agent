@@ -34,6 +34,7 @@ class AgentHarnessServiceTest {
     void tearDown() {
         ToolResultHolder.remove("request-1");
         ToolResultHolder.remove("request-denied");
+        ToolResultHolder.remove("request-fail");
     }
 
     @Test
@@ -90,6 +91,38 @@ class AgentHarnessServiceTest {
                 .singleElement()
                 .satisfies(trace -> assertThat(((Map<?, ?>) trace).get("success")).isEqualTo(false));
         verifyNoInteractions(tradeClient);
+    }
+
+    @Test
+    void shouldCaptureRuntimeExceptionAsFailedObservation() {
+        // 模拟 courseClient.baseInfo 抛 FeignException 这种网络异常。
+        // 之前会把异常吞掉但不打日志；现在要求至少能转成失败 observation 并把异常类名透出。
+        when(courseClient.baseInfo(1589905661084430337L, true))
+                .thenThrow(new RuntimeException("connection refused"));
+        AgentHarnessService service = newHarnessService();
+        AgentAction action = new AgentAction(
+                "course.query",
+                "CONSULT",
+                "CourseTools.queryCourseById",
+                "request-fail",
+                "session-1",
+                10001L,
+                Map.of("courseId", 1589905661084430337L)
+        );
+
+        AgentObservation observation = service.execute(action);
+
+        assertThat(observation.allowed()).isTrue();
+        assertThat(observation.success()).isFalse();
+        assertThat(observation.errorMessage()).contains("connection refused");
+        assertThat(ToolResultHolder.get("request-fail", "courseInfo_1589905661084430337")).isNull();
+        assertThat((List<?>) ToolResultHolder.get("request-fail", HarnessEventRecorder.TRACE_FIELD))
+                .singleElement()
+                .satisfies(trace -> {
+                    Map<?, ?> traceMap = (Map<?, ?>) trace;
+                    assertThat(traceMap.get("success")).isEqualTo(false);
+                    assertThat(((String) traceMap.get("errorMessage"))).contains("connection refused");
+                });
     }
 
     private AgentHarnessService newHarnessService() {

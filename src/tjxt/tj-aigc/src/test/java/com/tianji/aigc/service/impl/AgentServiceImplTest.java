@@ -30,6 +30,8 @@ import java.util.Map;
 import reactor.core.publisher.Flux;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -280,6 +282,56 @@ class AgentServiceImplTest {
         service.stop("session-3");
 
         verify(routeAgent).stop("session-3");
+    }
+
+    @Test
+    void shouldFallbackToHumanHandoffWhenRouteAgentThrows() {
+        when(routeAgent.getAgentType()).thenReturn(AgentTypeEnum.ROUTE);
+        when(humanHandoffAgent.getAgentType()).thenReturn(AgentTypeEnum.HUMAN_HANDOFF);
+        when(routeAgent.process(anyString(), anyString()))
+                .thenThrow(new RuntimeException("model timeout"));
+        ChatEventVO handoffEvent = ChatEventVO.builder()
+                .eventType(ChatEventTypeEnum.DATA.getValue())
+                .eventData("handoff")
+                .build();
+        when(humanHandoffAgent.processStream(anyString(), anyString()))
+                .thenReturn(Flux.just(handoffEvent));
+
+        AgentServiceImpl service = new AgentServiceImpl(
+                openAiChatClient,
+                systemPromptConfig,
+                List.of(routeAgent, humanHandoffAgent)
+        );
+
+        List<ChatEventVO> events = service.chat("我要咨询课程", "session-route-fail").collectList().block();
+
+        assertThat(events).hasSize(2);
+        assertThat(events.get(0).getEventType()).isEqualTo(ChatEventTypeEnum.ROUTE.getValue());
+        AgentServiceImpl.RouteResult route = (AgentServiceImpl.RouteResult) events.get(0).getEventData();
+        assertThat(route.nextAgent()).isEqualTo(AgentTypeEnum.HUMAN_HANDOFF.getAgentName());
+        assertThat(route.riskLevel()).isEqualTo("HIGH");
+        assertThat(route.routeReason()).contains("RouteAgent");
+        assertThat(events.get(1)).isEqualTo(handoffEvent);
+    }
+
+    @Test
+    void shouldNotExposeRawPlainTextAsCandidateWhenRouteIsNotStructured() {
+        when(routeAgent.getAgentType()).thenReturn(AgentTypeEnum.ROUTE);
+        // RouteAgent 违反 JSON 协议，输出了一串普通文本。理论上这种结果不应该被前端当作可选项展示。
+        when(routeAgent.process("随便聊聊", "session-plain")).thenReturn("普通回复");
+
+        AgentServiceImpl service = new AgentServiceImpl(
+                openAiChatClient,
+                systemPromptConfig,
+                List.of(routeAgent)
+        );
+
+        List<ChatEventVO> events = service.chat("随便聊聊", "session-plain").collectList().block();
+
+        AgentServiceImpl.RouteResult route = (AgentServiceImpl.RouteResult) events.get(0).getEventData();
+        // candidateAgents 不能包含用户的原始文本，必须回退到 HUMAN_HANDOFF。
+        assertThat(route.candidateAgents()).doesNotContain("普通回复");
+        assertThat(route.candidateAgents()).contains(AgentTypeEnum.HUMAN_HANDOFF.getAgentName());
     }
 
     private AgentHarnessService newHarnessService() {

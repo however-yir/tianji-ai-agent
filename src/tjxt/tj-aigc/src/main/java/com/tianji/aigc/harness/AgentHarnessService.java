@@ -1,8 +1,10 @@
 package com.tianji.aigc.harness;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AgentHarnessService {
@@ -29,6 +31,8 @@ public class AgentHarnessService {
             return observation;
         }
         catch (RuntimeException e) {
+            // 不打日志的话，Feign/网络超时、模型 NPE 这类错误对运维不可见。
+            log.warn("[AgentHarness] actionType={} 执行失败: {}", action.actionType(), e.getMessage(), e);
             AgentObservation observation = AgentObservation.of(
                     action, decision, false, null, null, e.getMessage(), elapsed(startTime));
             eventRecorder.record(observation);

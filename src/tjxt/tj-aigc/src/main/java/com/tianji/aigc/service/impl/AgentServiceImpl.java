@@ -58,12 +58,29 @@ public class AgentServiceImpl implements ChatService {
         long startTime = System.currentTimeMillis();
         // Step 1: RouteAgent intent analysis
         Agent routeAgent = this.findAgentByType(AgentTypeEnum.ROUTE);
-        String rawResult = routeAgent.process(question, sessionId);
+        RouteResult route;
+        try {
+            String rawResult = routeAgent.process(question, sessionId);
+            route = applyHumanHandoffPolicy(question, parseRouteResult(rawResult));
+        } catch (RuntimeException routeFailure) {
+            // RouteAgent itself blew up (model timeout, Nacos config missing, JSON parse error...).
+            // Don't fail the whole SSE — degrade to HUMAN_HANDOFF so the user still gets a response.
+            log.error("[Agent路由] RouteAgent执行异常，回退到人工兜底, sessionId={}, error={}",
+                    sessionId, routeFailure.getMessage(), routeFailure);
+            route = new RouteResult(
+                    AgentTypeEnum.HUMAN_HANDOFF.getAgentName(),
+                    0.0,
+                    "RouteAgent执行异常：" + routeFailure.getMessage(),
+                    "RouteAgent failed, falling back to human handoff",
+                    AgentTypeEnum.HUMAN_HANDOFF.getAgentName(),
+                    false,
+                    false,
+                    "HIGH",
+                    List.of(AgentTypeEnum.HUMAN_HANDOFF.getAgentName())
+            );
+        }
 
-        // Step 2: Parse structured JSON routing result
-        RouteResult route = applyHumanHandoffPolicy(question, parseRouteResult(rawResult));
         AgentTypeEnum agentTypeEnum = AgentTypeEnum.agentNameOf(route.nextAgent());
-
         log.info("[Agent路由] sessionId={}, 目标Agent={}, 耗时={}ms",
                 sessionId, agentTypeEnum, System.currentTimeMillis() - startTime);
 
@@ -154,17 +171,35 @@ public class AgentServiceImpl implements ChatService {
         } catch (Exception e) {
             log.debug("Route result is not structured JSON, using raw text: {}", raw);
         }
-        double confidence = AgentTypeEnum.agentNameOf(raw) == null ? 0.5 : 0.85;
+        // Plain text fallback: the LLM didn't follow the JSON contract.
+        // Treat the raw text as best-effort routing — only trust it when it matches
+        // a known AgentTypeEnum. Otherwise the routing result itself is the failure signal,
+        // and we must NOT put the raw user-facing text into the candidateAgents list,
+        // because the front-end renders it as a routable option.
+        AgentTypeEnum resolved = AgentTypeEnum.agentNameOf(raw);
+        if (resolved == null) {
+            return new RouteResult(
+                    AgentTypeEnum.HUMAN_HANDOFF.getAgentName(),
+                    0.5,
+                    "plain text routing: " + raw,
+                    "RouteAgent returned a plain text route, falling back to human handoff",
+                    AgentTypeEnum.HUMAN_HANDOFF.getAgentName(),
+                    false,
+                    false,
+                    "MEDIUM",
+                    List.of(AgentTypeEnum.HUMAN_HANDOFF.getAgentName())
+            );
+        }
         return new RouteResult(
-                raw,
-                confidence,
+                resolved.getAgentName(),
+                0.85,
                 "plain text routing",
                 "RouteAgent returned a plain text route",
-                raw,
+                resolved.getAgentName(),
                 false,
                 false,
                 "LOW",
-                parseCandidateAgents(null, raw)
+                parseCandidateAgents(null, resolved.getAgentName())
         );
     }
 

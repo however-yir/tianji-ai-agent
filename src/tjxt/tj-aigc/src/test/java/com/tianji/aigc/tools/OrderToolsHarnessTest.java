@@ -26,6 +26,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -41,6 +42,7 @@ class OrderToolsHarnessTest {
     @AfterEach
     void tearDown() {
         ToolResultHolder.remove("request-1");
+        ToolResultHolder.remove("request-empty");
         UserContext.removeUser();
     }
 
@@ -90,6 +92,39 @@ class OrderToolsHarnessTest {
         // 工具执行结束后必须清理 ThreadLocal，避免线程复用导致跨用户身份污染
         assertThat(UserContext.getUser()).isNull();
         verify(tradeClient).prePlaceOrder(List.of(1589905661084430337L));
+    }
+
+    @Test
+    void shouldNotThrowWhenToolContextIsNull() {
+        OrderTools tools = new OrderTools(newHarnessService());
+
+        PrePlaceOrder result = tools.prePlaceOrder(
+                List.of(1589905661084430337L),
+                null
+        );
+
+        assertThat(result).isNull();
+        // 防御性：toolContext 为 null 时不应触发 Feign 调用，也不应泄漏 UserContext
+        verifyNoInteractions(tradeClient);
+        assertThat(UserContext.getUser()).isNull();
+    }
+
+    @Test
+    void shouldNotInvokeFeignWhenCourseIdsIsEmpty() {
+        OrderTools tools = new OrderTools(newHarnessService());
+
+        PrePlaceOrder result = tools.prePlaceOrder(
+                List.of(),
+                new ToolContext(Map.of(
+                        Constant.USER_ID, 10001L,
+                        Constant.REQUEST_ID, "request-empty",
+                        Constant.SESSION_ID, "session-empty"
+                ))
+        );
+
+        assertThat(result).isNull();
+        verifyNoInteractions(tradeClient);
+        assertThat(UserContext.getUser()).isNull();
     }
 
     private AgentHarnessService newHarnessService() {

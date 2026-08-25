@@ -29,8 +29,22 @@ public class OrderTools {
     @Tool(description = Constant.Tools.PRE_PLACE_ORDER)
     public PrePlaceOrder prePlaceOrder(@ToolParam(description = Constant.ToolParams.COURSE_IDS) List<Number> ids,
                                        ToolContext toolContext) {
+        Map<String, Object> contextMap = toolContext == null || toolContext.getContext() == null
+                ? Map.of() : toolContext.getContext();
+        if (ids == null || ids.isEmpty()) {
+            // Policy guard would reject this anyway; short-circuit to avoid the
+            // runtime exception bubbling up as a generic tool failure.
+            return null;
+        }
+        // 没有 toolContext 说明 Spring AI 框架没有把 agent/session/user 上下文注入进来，
+        // 直接调用 harness 反而会带着错误的 requestId/userId 命中业务接口。
+        // 这里只清理 UserContext 即可，调用方会收到 null 结果（模型会自然降级）。
+        if (toolContext == null || toolContext.getContext() == null) {
+            UserContext.removeUser();
+            return null;
+        }
         // 设置用户ID，用于身份验证，否在在Feign调用时会出现401错误
-        UserContext.setUser(Convert.toLong(toolContext.getContext().get(Constant.USER_ID)));
+        UserContext.setUser(Convert.toLong(contextMap.get(Constant.USER_ID)));
         try {
             // 大模型传入的ids，可能是int类型，所以转化为long类型，再调用Feign
             List<Long> courseIds = CollStreamUtil.toList(ids, Number::longValue);
@@ -40,7 +54,7 @@ public class OrderTools {
                     "OrderTools.prePlaceOrder",
                     resolveString(toolContext, Constant.REQUEST_ID),
                     resolveString(toolContext, Constant.SESSION_ID),
-                    Convert.toLong(toolContext.getContext().get(Constant.USER_ID)),
+                    Convert.toLong(contextMap.get(Constant.USER_ID)),
                     Map.of("courseIds", courseIds)
             );
             return agentHarnessService.execute(action).resultAs(PrePlaceOrder.class);

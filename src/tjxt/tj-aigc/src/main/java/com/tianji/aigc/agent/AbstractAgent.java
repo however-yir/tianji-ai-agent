@@ -2,14 +2,12 @@ package com.tianji.aigc.agent;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.IdUtil;
-import cn.hutool.core.util.StrUtil;
 import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.tianji.aigc.attachment.AttachmentContext;
 import com.tianji.aigc.attachment.AttachmentContextHolder;
 import com.tianji.aigc.config.ModelOptionsHolder;
 import com.tianji.aigc.config.ModelOptionsHolder.ModelOptions;
 import com.tianji.aigc.config.ToolResultHolder;
-import com.tianji.aigc.constants.Constant;
 import com.tianji.aigc.enums.ChatEventTypeEnum;
 import com.tianji.aigc.harness.HarnessEventRecorder;
 import com.tianji.aigc.service.ChatService;
@@ -25,12 +23,14 @@ import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Sinks;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 public abstract class AbstractAgent implements Agent {
@@ -84,81 +84,95 @@ public abstract class AbstractAgent implements Agent {
         //更新会话时间
         this.chatSessionService.update(sessionId, question, userId);
 
-        return this.getChatClientRequest(sessionId, requestId, question)
+        // 用 Sinks.Many 统一管理事件：模型增量通过 doOnNext 投递，
+        // 终态事件（PARAM/TRACE/STOP）保证在 complete / cancel / error 三条路径上都会发一次，
+        // 避免之前 takeWhile + concatWith 在取消时下游一起被取消、客户端收不到 STOP 事件的问题。
+        Sinks.Many<ChatEventVO> sink = Sinks.many().unicast().onBackpressureBuffer();
+        AtomicBoolean terminalEmitted = new AtomicBoolean(false);
+
+        Runnable emitTerminal = () -> {
+            if (!terminalEmitted.compareAndSet(false, true)) {
+                return;
+            }
+            // Persist the assistant turn on every terminal path.
+            // 之前 doOnCancel 才落库，正常完成路径不落，导致历史记录里只看到用户消息、看不到助手回复。
+            this.saveStopHistoryRecord(sessionId, outputBuilder.toString());
+            try {
+                var map = ToolResultHolder.get(requestId);
+                if (CollUtil.isNotEmpty(map)) {
+                    ToolResultHolder.remove(requestId);
+                    Object trace = map.get(HarnessEventRecorder.TRACE_FIELD);
+                    if (trace != null) {
+                        sink.tryEmitNext(ChatEventVO.builder()
+                                .eventData(trace)
+                                .eventType(ChatEventTypeEnum.TRACE.getValue())
+                                .build());
+                    }
+                    sink.tryEmitNext(ChatEventVO.builder()
+                            .eventData(map)
+                            .eventType(ChatEventTypeEnum.PARAM.getValue())
+                            .build());
+                }
+                sink.tryEmitNext(STOP_EVENT);
+                sink.tryEmitComplete();
+            } finally {
+                if (this.useAttachmentContext()) {
+                    AttachmentContextHolder.clear(sessionId);
+                }
+            }
+        };
+
+        this.getChatClientRequest(sessionId, requestId, question)
                 .stream()
                 .chatResponse()
-                .doFirst(() -> {
-                    //输出开始，标记正在输出
-                    GENERATE_STATUS.put(sessionId, true);
-                })
+                .doFirst(() -> GENERATE_STATUS.put(sessionId, true))
                 .doOnComplete(() -> {
-                    //输出结束，清除标记
                     GENERATE_STATUS.remove(sessionId);
+                    emitTerminal.run();
                 })
                 .doOnError(throwable -> {
                     GENERATE_STATUS.remove(sessionId);
                     if (this.useAttachmentContext()) {
                         AttachmentContextHolder.clear(sessionId);
                     }
-                }) // 错误时清除标记
+                    emitTerminal.run();
+                })
                 .doOnCancel(() -> {
-                    // 当输出被取消时，保存输出的内容到历史记录中
-                    this.saveStopHistoryRecord(sessionId, outputBuilder.toString());
+                    GENERATE_STATUS.remove(sessionId);
                     if (this.useAttachmentContext()) {
                         AttachmentContextHolder.clear(sessionId);
                     }
+                    emitTerminal.run();
                 })
-                .takeWhile(s -> Optional.ofNullable(GENERATE_STATUS.get(sessionId)).orElse(false)) // 只输出标记为true的流
+                .takeWhile(s -> Optional.ofNullable(GENERATE_STATUS.get(sessionId)).orElse(false))
                 .map(chatResponse -> {
-                    // 对于响应结果进行处理，如果是最后一条数据，就把此次消息id放到内存中
-                    // 主要用于存储消息数据到 redis中，可以根据消息di获取的请求id，再通过请求id就可以获取到参数列表了
-                    // 从而解决，在历史聊天记录中没有外参数的问题
-                    var finishReason = chatResponse.getResult().getMetadata().getFinishReason();
-                    if (StrUtil.equals(Constant.STOP, finishReason)) {
-                        var messageId = chatResponse.getMetadata().getId();
-                        ToolResultHolder.put(messageId, Constant.REQUEST_ID, requestId);
-                    }
-                    // 获取大模型的输出的内容
                     String text = chatResponse.getResult().getOutput().getText();
-                    // 追加到输出内容中
                     outputBuilder.append(text);
-                    // 封装响应对象
                     return ChatEventVO.builder()
                             .eventData(text)
                             .eventType(ChatEventTypeEnum.DATA.getValue())
                             .build();
                 })
-                .concatWith(Flux.defer(() -> {
-                    // 通过请求id获取到参数列表，如果不为空，就将其追加到返回结果中
-                    try {
-                        var map = ToolResultHolder.get(requestId);
-                        if (CollUtil.isNotEmpty(map)) {
-                            ToolResultHolder.remove(requestId); // 清除参数列表
-                            List<ChatEventVO> events = new ArrayList<>();
-                            Object trace = map.get(HarnessEventRecorder.TRACE_FIELD);
-                            if (trace != null) {
-                                events.add(ChatEventVO.builder()
-                                        .eventData(trace)
-                                        .eventType(ChatEventTypeEnum.TRACE.getValue())
-                                        .build());
+                .subscribe(
+                        sink::tryEmitNext,
+                        err -> {
+                            // 模型流异常：把异常也作为终态路径处理
+                            GENERATE_STATUS.remove(sessionId);
+                            if (this.useAttachmentContext()) {
+                                AttachmentContextHolder.clear(sessionId);
                             }
-                            // 响应给前端的参数数据
-                            ChatEventVO chatEventVO = ChatEventVO.builder()
-                                    .eventData(map)
-                                    .eventType(ChatEventTypeEnum.PARAM.getValue())
-                                    .build();
-                            events.add(chatEventVO);
-                            events.add(STOP_EVENT);
-                            return Flux.fromIterable(events);
+                            emitTerminal.run();
+                        },
+                        () -> {
+                            // takeWhile 触发 upstream complete 时，已经走过上面的 doOnComplete 路径，
+                            // 这里只在 takeWhile 没有触发 complete（极少见，防御性）时再补一次。
+                            if (!terminalEmitted.get()) {
+                                emitTerminal.run();
+                            }
                         }
-                        return Flux.just(STOP_EVENT);
-                    }
-                    finally {
-                        if (this.useAttachmentContext()) {
-                            AttachmentContextHolder.clear(sessionId);
-                        }
-                    }
-                }));
+                );
+
+        return sink.asFlux();
     }
 
     /**
