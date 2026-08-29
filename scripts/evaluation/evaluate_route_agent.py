@@ -51,7 +51,7 @@ def load_dataset(path: Path) -> list[dict[str, Any]]:
             continue
         row = json.loads(line)
         if not isinstance(row.get("input"), str) or not isinstance(row.get("expectedAgent"), str):
-            raise ValueError(f"{path}:{line_no} must include string input and expectedAgent")
+            raise TypeError(f"{path}:{line_no} must include string input and expectedAgent")
         if row["expectedAgent"] not in AGENTS:
             raise ValueError(f"{path}:{line_no} has unsupported expectedAgent {row['expectedAgent']}")
         rows.append(row)
@@ -90,7 +90,7 @@ def route_via_api(api_url: str, token: str, question: str, session_id: str) -> s
     if token:
         headers["Authorization"] = token if token.startswith("Bearer ") else f"Bearer {token}"
     request = urllib.request.Request(url, data=payload, headers=headers, method="POST")
-    with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310 - explicit CLI URL.
+    with urllib.request.urlopen(request, timeout=30) as response:
         for raw_line in response:
             line = raw_line.decode("utf-8").strip()
             if not line.startswith("data:"):
@@ -104,7 +104,7 @@ def route_via_api(api_url: str, token: str, question: str, session_id: str) -> s
     return "HUMAN_HANDOFF"
 
 
-def safe_divide(numerator: int | float, denominator: int | float) -> float:
+def safe_divide(numerator: float, denominator: float) -> float:
     return numerator / denominator if denominator else 0.0
 
 

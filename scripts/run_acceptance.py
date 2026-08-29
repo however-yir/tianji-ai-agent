@@ -64,8 +64,7 @@ def main() -> int:
             "agent governance and SSE contracts",
             [
                 "mvn", "-B", "-ntp", "-f", "src/tjxt/tj-aigc/pom.xml",
-                "-Dtest=RouteSafetyPolicyTest,ActionPolicyGuardTest,AgentHarnessServiceTest,"
-                "AgentServiceImplTest,SseEventContractTest,CourseToolsHarnessTest,OrderToolsHarnessTest",
+                "-Dtest=RouteSafetyPolicyTest,ActionPolicyGuardTest,AgentHarnessServiceTest,AgentServiceImplTest,SseEventContractTest,CourseToolsHarnessTest,OrderToolsHarnessTest",
                 "test",
             ],
             ROOT,
