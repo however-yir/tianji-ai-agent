@@ -46,7 +46,7 @@ public class RedisChatMemory implements ChatMemory {
         return prefix + conversationId;
     }
 
-    @Override
+    /** Windowed history read kept for UI rendering; Spring AI's ChatMemory interface only declares full reads. */
     public List<Message> get(String conversationId, int lastN) {
         if (lastN <= 0) {
             return List.of();
@@ -57,6 +57,13 @@ public class RedisChatMemory implements ChatMemory {
             return List.of();
         }
 
+        return CollStreamUtil.toList(messages, MessageUtil::toMessage);
+    }
+
+    @Override
+    public List<Message> get(String conversationId) {
+        BoundListOperations<String, String> listOperations = this.stringRedisTemplate.boundListOps(this.getKey(conversationId));
+        List<String> messages = listOperations.range(0, -1);
         return CollStreamUtil.toList(messages, MessageUtil::toMessage);
     }
 

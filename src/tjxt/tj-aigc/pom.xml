@@ -84,17 +84,6 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-loadbalancer</artifactId>
         </dependency>
-        <dependency>
-            <groupId>com.alibaba.cloud.ai</groupId>
-            <artifactId>spring-ai-alibaba-starter</artifactId>
-            <version>1.0.0-M6.1</version>
-            <exclusions>
-                <exclusion>
-                    <artifactId>commons-logging</artifactId>
-                    <groupId>commons-logging</groupId>
-                </exclusion>
-            </exclusions>
-        </dependency>
 
         <!--数据库相关-->
         <!-- mybatis plus 管理 -->
@@ -118,7 +107,7 @@
 
         <dependency>
             <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-elasticsearch-store-spring-boot-starter</artifactId>
+            <artifactId>spring-ai-starter-vector-store-elasticsearch</artifactId>
             <exclusions>
                 <exclusion>
                     <groupId>co.elastic.clients</groupId>
@@ -155,7 +144,12 @@
 
         <dependency>
             <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-openai-spring-boot-starter</artifactId>
+            <artifactId>spring-ai-starter-model-openai</artifactId>
+        </dependency>
+        <!-- Local VectorStore RAG fallback (RetrievalAugmentationAdvisor) -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-rag</artifactId>
         </dependency>
 
         <dependency>

@@ -64,7 +64,11 @@ public class MessageUtil {
                 return new SystemMessage(redisMessage.getTextContent());
             }
             case USER -> {
-                return new UserMessage(redisMessage.getTextContent(), redisMessage.getMedia(), redisMessage.getMetadata());
+                return UserMessage.builder()
+                        .text(redisMessage.getTextContent())
+                        .media(redisMessage.getMedia())
+                        .metadata(redisMessage.getMetadata())
+                        .build();
             }
             case ASSISTANT -> {
                 return new MyAssistantMessage(redisMessage.getTextContent(), redisMessage.getProperties(),

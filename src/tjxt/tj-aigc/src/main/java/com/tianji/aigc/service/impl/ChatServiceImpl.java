@@ -4,7 +4,6 @@ import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
-import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.tianji.aigc.config.ModelOptionsHolder;
 import com.tianji.aigc.config.ModelOptionsHolder.ModelOptions;
 import com.tianji.aigc.config.SystemPromptConfig;
@@ -17,12 +16,11 @@ import com.tianji.aigc.vo.ChatEventVO;
 import com.tianji.common.utils.UserContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor;
-import org.springframework.ai.chat.client.advisor.QuestionAnswerAdvisor;
+import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
+import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.openai.OpenAiChatOptions;
-import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import reactor.core.publisher.Flux;
 
@@ -40,6 +38,9 @@ import java.util.concurrent.ConcurrentHashMap;
 // @Service
 @RequiredArgsConstructor
 public class ChatServiceImpl implements ChatService {
+    private static final String CHAT_MEMORY_CONVERSATION_ID_KEY = "chat_memory_conversation_id";
+
+
 
     private final ChatClient dashScopeChatClient;
     private final ChatClient openAiChatClient;
@@ -74,12 +75,14 @@ public class ChatServiceImpl implements ChatService {
                         .param("now", DateUtil.now()) //系统当前时间
                 )
                 .advisors(advisor -> advisor
-                        .advisors(new QuestionAnswerAdvisor(vectorStore, SearchRequest.builder()
-                                .query(question)
-                                .topK(5)
-                                .similarityThreshold(0.65)
-                                .build()))
-                        .param(AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY, conversationId))
+                        .advisors(RetrievalAugmentationAdvisor.builder()
+                                .documentRetriever(VectorStoreDocumentRetriever.builder()
+                                        .vectorStore(vectorStore)
+                                        .topK(5)
+                                        .similarityThreshold(0.65)
+                                        .build())
+                                .build())
+                        .param(CHAT_MEMORY_CONVERSATION_ID_KEY, conversationId))
                 .toolContext(Map.of(Constant.REQUEST_ID, requestId, Constant.USER_ID, userId)) //在工具上下文中传递请求id
                 .user(question);
 
@@ -158,17 +161,12 @@ public class ChatServiceImpl implements ChatService {
 
         String provider = options.hasProvider() ? options.provider() : "dashscope";
 
-        if ("openai".equalsIgnoreCase(provider)) {
-            OpenAiChatOptions oaiOptions = new OpenAiChatOptions();
-            if (options.hasModel()) oaiOptions.setModel(options.model());
-            if (options.hasTemperature()) oaiOptions.setTemperature(options.temperature());
-            requestSpec.options(oaiOptions);
-        }
-        else {
-            DashScopeChatOptions dsOptions = new DashScopeChatOptions();
-            if (options.hasModel()) dsOptions.setModel(options.model());
-            if (options.hasTemperature()) dsOptions.setTemperature(options.temperature());
-            requestSpec.options(dsOptions);
-        }
+        // Both providers (OpenAI and DashScope via its compatible endpoint) share the
+        // OpenAiChatOptions; the provider name above is a UI-facing brand label.
+        OpenAiChatOptions oaiOptions = new OpenAiChatOptions();
+        if (options.hasModel()) oaiOptions.setModel(options.model());
+        if (options.hasTemperature()) oaiOptions.setTemperature(options.temperature());
+        requestSpec.options(oaiOptions);
+
     }
 }

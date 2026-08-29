@@ -1,13 +1,12 @@
 spring:
   ai:
-    dashscope:
-      chat:
-        enabled: ${AIGC_DASHSCOPE_CHAT_ENABLED:true}
-      embedding:
-        enabled: ${AIGC_DASHSCOPE_EMBEDDING_ENABLED:true}
     openai:
+      base-url: ${AIGC_DASHSCOPE_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
+      api-key: ${AIGC_DASHSCOPE_API_KEY:}
       chat:
-        enabled: ${AIGC_OPENAI_CHAT_ENABLED:false}
+        enabled: ${AIGC_OPENAI_CHAT_ENABLED:true}
+        options:
+          model: qwen-plus
       embedding:
         enabled: ${AIGC_OPENAI_EMBEDDING_ENABLED:false}
 tj:

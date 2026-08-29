@@ -4,7 +4,6 @@ import com.tianji.aigc.memory.RedisChatMemory;
 import com.tianji.common.constants.Constant;
 import com.tianji.common.utils.WebUtils;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
@@ -55,45 +54,14 @@ public class SpringAIConfig {
         return retryListener;
     }
 
-    /**
-     * 配置 ChatClient。
-     * <p>
-     * 通过 ObjectProvider 按名称懒取 builder：local profile 默认关闭 openai（spring.ai.openai.chat.enabled=false）
-     * 时 openAiChatClientBuilder 不存在，直接按限定符注入会导致整个上下文启动失败。
-     * 这里回退到另一个已启用的供应商 builder，保证至少一个 provider 开启即可启动；
-     * 两个都未启用则快速失败并给出明确原因。
-     */
     @Bean
-    public ChatClient dashScopeChatClient(@Qualifier("dashScopeChatClientBuilder") ObjectProvider<ChatClient.Builder> dashScopeBuilder,
-                                          @Qualifier("openAiChatClientBuilder") ObjectProvider<ChatClient.Builder> openAiBuilder,
-                                          Advisor loggerAdvisor // 日志记录器
-    ) {
-        return resolveBuilder(dashScopeBuilder, openAiBuilder)
-                .defaultAdvisors(loggerAdvisor)
-                .build();
-    }
-
-    @Bean
-    public ChatClient openAiChatClient(@Qualifier("openAiChatClientBuilder") ObjectProvider<ChatClient.Builder> openAiBuilder,
-                                       @Qualifier("dashScopeChatClientBuilder") ObjectProvider<ChatClient.Builder> dashScopeBuilder,
-                                       Advisor loggerAdvisor  // 日志记录器
-    ) {
-        return resolveBuilder(openAiBuilder, dashScopeBuilder)
-                .defaultAdvisors(loggerAdvisor)
-                .build();
-    }
-
-    private static ChatClient.Builder resolveBuilder(ObjectProvider<ChatClient.Builder> primary,
-                                                     ObjectProvider<ChatClient.Builder> fallback) {
-        ChatClient.Builder builder = primary.getIfAvailable();
-        if (builder == null) {
-            builder = fallback.getIfAvailable();
-        }
+    public ChatClient openAiChatClient(ObjectProvider<ChatClient.Builder> builderProvider, Advisor loggerAdvisor) {
+        ChatClient.Builder builder = builderProvider.getIfAvailable();
         if (builder == null) {
             throw new IllegalStateException(
-                    "未找到可用的 ChatClient.Builder：请至少开启 spring.ai.dashscope.chat.enabled 或 spring.ai.openai.chat.enabled");
+                    "未找到可用的 ChatClient.Builder：请至少开启 spring.ai.openai.chat.enabled（DashScope 通过 OpenAI 兼容端点接入）");
         }
-        return builder;
+        return builder.defaultAdvisors(loggerAdvisor).build();
     }
 
     /**
@@ -111,6 +79,6 @@ public class SpringAIConfig {
 
     @Bean
     public Advisor messageChatMemoryAdvisor(RedisChatMemory redisChatMemory) {
-        return new MessageChatMemoryAdvisor(redisChatMemory);
+        return MessageChatMemoryAdvisor.builder(redisChatMemory).build();
     }
 }

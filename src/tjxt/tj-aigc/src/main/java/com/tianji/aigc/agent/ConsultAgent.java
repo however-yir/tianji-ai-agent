@@ -8,7 +8,8 @@ import com.tianji.aigc.enums.AgentTypeEnum;
 import com.tianji.aigc.tools.CourseTools;
 import com.tianji.common.utils.UserContext;
 import lombok.RequiredArgsConstructor;
-import org.springframework.ai.chat.client.advisor.QuestionAnswerAdvisor;
+import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
+import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -47,7 +48,13 @@ public class ConsultAgent extends AbstractAgent {
                 .topK(5)
                 .similarityThreshold(0.65)
                 .build();
-        return List.of(new QuestionAnswerAdvisor(vectorStore, searchRequest));
+        return List.of(RetrievalAugmentationAdvisor.builder()
+                .documentRetriever(VectorStoreDocumentRetriever.builder()
+                        .vectorStore(vectorStore)
+                        .topK(searchRequest.getTopK())
+                        .similarityThreshold(searchRequest.getSimilarityThreshold())
+                        .build())
+                .build());
     }
 
     @Override

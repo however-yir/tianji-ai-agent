@@ -21,7 +21,7 @@ import com.tianji.aigc.vo.SessionVO;
 import com.tianji.common.utils.UserContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.memory.ChatMemory;
+import com.tianji.aigc.memory.RedisChatMemory;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.context.annotation.Profile;
@@ -41,7 +41,7 @@ import java.util.Map;
 public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatSession> implements ChatSessionService {
 
     private final SessionProperties sessionProperties;
-    private final ChatMemory chatMemory;
+    private final RedisChatMemory chatMemory;
     // 历史消息数量，默认1000条
     public static final int HISTORY_MESSAGE_COUNT = 1000;
 

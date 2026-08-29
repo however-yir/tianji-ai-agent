@@ -6,7 +6,8 @@ import com.tianji.aigc.knowledgeops.KnowledgeOpsClient;
 import com.tianji.aigc.knowledgeops.KnowledgeOpsProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.client.advisor.QuestionAnswerAdvisor;
+import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
+import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -74,6 +75,12 @@ public class KnowledgeAgent extends AbstractAgent {
                 .topK(5)
                 .similarityThreshold(0.5)
                 .build();
-        return List.of(new QuestionAnswerAdvisor(vectorStore, searchRequest));
+        return List.of(RetrievalAugmentationAdvisor.builder()
+                .documentRetriever(VectorStoreDocumentRetriever.builder()
+                        .vectorStore(vectorStore)
+                        .topK(searchRequest.getTopK())
+                        .similarityThreshold(searchRequest.getSimilarityThreshold())
+                        .build())
+                .build());
     }
 }
