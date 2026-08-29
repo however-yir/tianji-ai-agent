@@ -5,9 +5,10 @@
 | 指标 | SLO 目标 | 度量方式 | Prometheus 指标 |
 |---|---|---|---|
 | 可用性 | 99.5%（月） | Actuator health 端点存活率 | `up{job="tj-aigc"}` |
-| 首 token 延迟 P99 | < 3s | SSE 首字节时间 | `http_server_requests_seconds{uri="/chat/text",quantile="0.99"}` |
+| Agent Runtime P99 | < 3s | Harness action latency | `agent_runtime_latency_seconds` |
 | 聊天请求成功率 | > 95% | HTTP 2xx 比例 | `http_server_requests_seconds_count{status=~"2.."} / http_server_requests_seconds_count` |
-| LLM 调用超时率 | < 5% | Spring Retry 失败次数 | 自定义 `ai.llm.timeout.count` |
+| Agent action denial rate | 需按业务复核 | Policy Guard 拒绝数 / action 总数 | `agent_action_denied_total / agent_action_total` |
+| Agent runtime failure rate | < 5% | Runtime failure / success + failure | `agent_runtime_failure_total` |
 | 附件上传成功率 | > 98% | HTTP 2xx + 4xx 客户端错误 | `/attachments` 端点状态码分布 |
 | 错误率 | < 2%（5xx） | 服务端错误比例 | `http_server_requests_seconds_count{status=~"5.."}` |
 
@@ -39,28 +40,30 @@ groups:
           summary: "tj-aigc 5xx 错误率超过 2%"
           description: "当前 5xx 错误率: {{ $value | humanizePercentage }}。"
 
-      # 首 token 延迟过高
-      - alert: AigcHighLatency
+      # Agent Runtime 延迟过高
+      - alert: AigcAgentRuntimeHighLatency
         expr: |
           histogram_quantile(0.99,
-            sum(rate(http_server_requests_seconds_bucket{job="tj-aigc",uri="/chat/text"}[5m])) by (le)
+            sum(rate(agent_runtime_latency_seconds_bucket{job="tj-aigc"}[5m])) by (le)
           ) > 3
         for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "tj-aigc 聊天接口 P99 延迟超过 3s"
+          summary: "tj-aigc Agent Runtime P99 延迟超过 3s"
           description: "当前 P99 延迟: {{ $value }}s。"
 
-      # LLM 调用超时
-      - alert: AigcLlmTimeoutHigh
-        expr: rate(ai_llm_timeout_count_total{job="tj-aigc"}[5m]) > 0.1
+      # Agent runtime failure
+      - alert: AigcAgentRuntimeFailureHigh
+        expr: |
+          sum(rate(agent_runtime_failure_total{job="tj-aigc"}[5m]))
+          / clamp_min(sum(rate(agent_runtime_success_total{job="tj-aigc"}[5m])) + sum(rate(agent_runtime_failure_total{job="tj-aigc"}[5m])), 1) > 0.05
         for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "tj-aigc LLM 调用超时频繁"
-          description: "每秒超时次数: {{ $value }}。"
+          summary: "tj-aigc Agent Runtime failure rate exceeds 5%"
+          description: "当前失败率: {{ $value | humanizePercentage }}。"
 
       # 内存使用过高
       - alert: AigcHighMemory
@@ -94,3 +97,19 @@ scrape_configs:
 | `/actuator/health/readiness` | K8s readiness probe |
 | `/actuator/prometheus` | Prometheus 指标抓取 |
 | `/actuator/info` | 构建信息 |
+
+## Agent Metrics Contract
+
+`AgentMetrics` records only stable, low-cardinality labels such as action name, Agent name and
+outcome. `sessionId`、`requestId` 和用户 ID must never become metric labels; they belong in the
+sanitized `TRACE(1005)` observation instead.
+
+| Micrometer name | Prometheus name | Meaning |
+| --- | --- | --- |
+| `agent.route.total` | `agent_route_total` | routing decisions by target Agent |
+| `agent.route.handoff` | `agent_route_handoff_total` | deterministic human-hand-off escalation |
+| `agent.action.total` | `agent_action_total` | governed action attempts by action/status |
+| `agent.action.denied` | `agent_action_denied_total` | policy-denied actions |
+| `agent.runtime.success` / `failure` | `agent_runtime_success_total` / `agent_runtime_failure_total` | Runtime outcome |
+| `agent.runtime.latency` | `agent_runtime_latency_seconds` | Harness execution timing |
+| `sse.session.completed` / `failed` | `sse_session_completed_total` / `sse_session_failed_total` | terminal SSE outcome |

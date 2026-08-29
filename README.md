@@ -1,10 +1,10 @@
-# tianji-ai-agent · 业务 Agent 案例：CloudAgent 智能客服
+# Tianji AI Agent
 
-> **Matrix role:** `tianji-ai-agent` is the business Agent case study: intent routing, tool calling, SSE cards, MCP, and course-service workflows on top of the platform capabilities provided by [`knowledgeops-agent`](https://github.com/however-yir/knowledgeops-agent).
+> **Production-oriented multi-agent course advisor with deterministic action governance, offline regression evaluation, SSE business contracts and observable tool execution.**
 >
-> **Business Agent Showcase** — 这不是一个框架 Demo，而是一个 **可运行的业务 Agent 工程案例**：围绕在线课程客服场景，展示如何用 Spring AI 多智能体架构完成从意图识别、课程推荐、预下单到售后转人工的完整业务闭环。
+> 这不是框架 Demo 或 AI 技术合集，而是一个围绕课程推荐、咨询、预下单、售后与转人工的可运行业务 Agent 案例。
 
-用户提问 -> RouteAgent 意图识别 -> 9 种子 Agent 分发 -> AgentHarness 治理业务动作 -> Runtime 调用课程/订单/KnowledgeOps -> Observation 写入 TRACE/PARAM -> SSE 流式返回 -> 前端课程/订单卡片与工具轨迹渲染。
+用户请求 -> RouteAgent -> 子 Agent -> AgentAction -> AgentHarness Policy -> Runtime -> AgentObservation -> SSE -> 前端业务卡片。
 
 上线链路：RouteAgent -> 子Agent -> AgentHarness -> Runtime -> Observation -> SSE。
 
@@ -15,6 +15,14 @@
 [![Maven](https://img.shields.io/badge/Build-Maven-C71A36?logo=apachemaven)](https://maven.apache.org/)
 [![CI](https://img.shields.io/badge/CI-Core%20Path%20Blocking-success)](.github/workflows/ci.yml)
 [![Status](https://img.shields.io/badge/Status-Business%20Agent%20Showcase-blue)](#)
+
+## Why this project
+
+1. **Business state machine first** — `BUY` can only produce `order.preview`; it reaches `USER_CONFIRM_REQUIRED`, never LLM-initiated payment.
+2. **LLM proposes, deterministic policy decides** — allowlisted actions pass `AgentHarness`; payment, privileged, unknown and injection-driven actions are denied before Runtime.
+3. **Evidence rather than claims** — a 160-case offline route-contract gate, Java governance/SSE tests, frontend client-contract tests, acceptance report and low-cardinality metrics make the behavior inspectable.
+
+> **Matrix role:** `tianji-ai-agent` is the business Agent case study on top of the platform capabilities provided by [`knowledgeops-agent`](https://github.com/however-yir/knowledgeops-agent). RAG, MCP, memory and multimodal paths remain integrations, not the primary story.
 
 ## 矩阵角色
 
@@ -28,7 +36,7 @@
 
 1. 用户在聊天前端输入课程咨询、推荐或购买问题。
 2. `tj-aigc` 接收 `/chat` 请求，建立会话上下文和附件上下文。
-3. `RouteAgent` 判断意图（结构化 JSON：intent/confidence/routeReason/candidateAgents/nextAgent/needRag/needMemory/riskLevel），路由到 9 种子 Agent；投诉、低置信度和支付敏感问题统一兜底到 `HUMAN_HANDOFF`。
+3. `RouteAgent` 判断意图（结构化 JSON：intent/confidence/routeReason/candidateAgents/nextAgent/needRag/needMemory/riskLevel），路由到业务子 Agent；投诉、低置信度、支付、越权和注入风险统一兜底到 `HUMAN_HANDOFF`。
 4. 子 Agent 通过 `CourseTools`、`OrderTools` 构造 `AgentAction`，交给 `AgentHarnessService` 执行 policy、runtime 和 observation。
 5. `AgentRuntime` 调用课程、交易或 KnowledgeOps 能力；`HarnessEventRecorder` 把 `AgentObservation` 写入 `TRACE`，把课程/订单结果写入 `PARAM`。
 6. 前端消费 `ROUTE / DATA / TRACE / EVIDENCE / MEMORY / PARAM / STOP` 事件，渲染路由链路、工具执行轨迹、课程卡片、订单卡片、route trace、引用来源、记忆命中和停止生成状态。
@@ -152,6 +160,15 @@ sequenceDiagram
 | `src/my-spring-ai` | Spring AI 能力样例 | ChatClient、Advisor、Tool、RAG、多模态基础能力 |
 | `src/my-spring-ai-mcp` | MCP 扩展示例 | 把工具封装为可复用 MCP Server/Client |
 
+`src/openai-java-demo`、`src/my-spring-ai` 和 `src/my-spring-ai-mcp` 是学习参考，不属于核心架构图、核心覆盖率或主业务质量门禁；保留在原位置是为了避免无价值的大范围 Maven 路径改造。
+
+## Evaluation and Acceptance
+
+- **Offline route contract:** 160 curated cases, baseline **98.75% accuracy / 98.57% Macro-F1 / 0% unsafe routes**. It evaluates deterministic routing and safety fallback, not live LLM quality. See [evaluation checklist](docs/evaluation/multi-agent-eval-checklist.md).
+- **Governance:** real production `ActionPolicyGuard`, `AgentHarnessService`, `AgentRuntime`, tools and `RouteSafetyPolicy` are covered by Java tests.
+- **SSE:** backend and frontend share the [SSE business contract](docs/sse-contract.md): malformed events are rejected, stream failures become a safe trace, and every response terminates with `STOP`.
+- **Acceptance:** `bash scripts/acceptance.sh` runs the no-LLM evaluator, real Harness/Runtime/SSE contracts and frontend SSE tests, then writes `artifacts/acceptance/acceptance-report.json`.
+
 ## Demo 闭环
 
 演示脚本见 [docs/demo-script.md](docs/demo-script.md)。固定准备 5 个问题：
@@ -264,10 +281,16 @@ mvn -B -ntp -f src/tjxt/pom.xml -pl tj-aigc -am -DskipTests package
 mvn -B -ntp -f src/tjxt/tj-aigc/pom.xml test
 ```
 
-RouteAgent 评测：
+RouteAgent 离线契约评测：
 
 ```bash
-python3 scripts/evaluation/evaluate_route_agent.py --min-accuracy 0.85
+python3 scripts/evaluation/evaluate_route_agent.py
+```
+
+一键验收（不调用真实 LLM API）：
+
+```bash
+bash scripts/acceptance.sh
 ```
 
 企业级上线校验：
@@ -276,7 +299,7 @@ python3 scripts/evaluation/evaluate_route_agent.py --min-accuracy 0.85
 bash scripts/validate_enterprise_launch.sh
 ```
 
-示例输出会包含 `Accuracy` 和混淆矩阵；默认离线模式用于本地快速回归，也可以传 `--api-url http://127.0.0.1:8094` 读取真实 `/chat` SSE 的 `ROUTE(1004)` 事件。
+示例输出会包含 `Accuracy`、Macro-F1、每类 precision/recall/F1、handoff/unsafe-route rate 和混淆矩阵；默认离线模式用于本地快速回归，也可以传 `--api-url http://127.0.0.1:8094` 读取真实 `/chat` SSE 的 `ROUTE(1004)` 事件。
 
 手工集成测试依赖真实模型、Nacos、业务中间件和密钥，默认通过 JUnit Tag 排除：
 
@@ -289,20 +312,20 @@ mvn -B -ntp -f src/tjxt/tj-aigc/pom.xml -Pmanual-integration-tests test
 仓库把”展示项目必须稳定”的链路设为阻断：
 
 - `web/chat-ui`：lint、unit test、build
-- `tj-aigc`：依赖链安装、单元测试、JaCoCo 覆盖率报告上传
-- `my-spring-ai`：编译打包
-- Python smoke tests：仓库文档和脚本基础检查
-- Enterprise launch readiness：生产上线方案、发布清单、Runbook、Agent 治理和 300 条路线图检查
+- `tj-aigc`：核心单元测试、Harness governance、SSE contract、JaCoCo 核心覆盖率门禁
+- Python：smoke tests、Ruff、offline route contract evaluator
+- 一键 acceptance：no-LLM course recommendation, consultation, preview, denial, handoff and timeout paths
+- Secret scan：Gitleaks
+- Enterprise launch readiness：生产上线方案、发布清单、Runbook 和 Agent 治理检查
 
 非关键扫描保留为 advisory job（`continue-on-error: true`），避免噪声挡住核心链路：
 
 | Advisory Job | 工具 | 用途 |
 |---|---|---|
-| Python Quality | Ruff + compileall | Python 代码规范 |
-| Secret Scan | Gitleaks | 硬编码密钥检测 |
-| Java Quality | Checkstyle + SpotBugs | Java 代码规范 + 静态分析 |
 | OWASP Dependency Check | dependency-check-maven | 已知漏洞依赖扫描（CVSS >= 7） |
 | Container Image Scan | Trivy | Dockerfile 文件系统扫描（HIGH/CRITICAL） |
+
+`my-spring-ai`、`openai-java-demo` 的兼容性编译和可调用真实模型的 live evaluation 属于手动/advisory 路径，不影响日常主业务 CI 稳定性。
 
 Spring AI 版本兼容说明见 [docs/spring-ai-version-note.md](docs/spring-ai-version-note.md)。
 
@@ -317,6 +340,7 @@ Spring AI 版本兼容说明见 [docs/spring-ai-version-note.md](docs/spring-ai-
 
 - **Spring Boot Actuator**：`/actuator/health`（含 liveness/readiness）、`/actuator/info`
 - **Prometheus 指标**：`/actuator/prometheus`，HTTP 请求延迟百分位直方图
+- **Agent runtime 指标**：route/handoff、action/denied、runtime success/failure/latency、SSE completed/failed；不以 sessionId 或用户 ID 作为 metric label
 - **结构化日志**：logstash-logback-encoder，生产环境输出 JSON 格式
 - **SLO 定义与告警规则**：见 [docs/observability/slo-and-alerting.md](docs/observability/slo-and-alerting.md)
 

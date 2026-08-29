@@ -1,33 +1,36 @@
-# Multi-Agent Evaluation Checklist
+# RouteAgent Evaluation Checklist
 
-## 1. 任务拆解
-- [ ] Planner 能把复杂任务拆成可执行子任务
-- [ ] 子任务之间依赖关系正确
-- [ ] 子任务失败可回滚或重试
+## Offline Blocking Contract
 
-## 2. 路由与工具调用
-- [x] RouteAgent 路由准确率 >= 85%（见 `route-agent-dataset.jsonl`，可用 `scripts/evaluation/evaluate_route_agent.py` 或 `scripts/evaluation/evaluate_route_predictions.py` 复现）
-- [ ] 工具调用成功率 >= 95%
-- [ ] 工具失败时可自动降级
+The checked-in JSONL has 160 curated cases across recommendation, consultation,
+purchase preview, knowledge, after-sale, study plan, ambiguous requests, complaints
+and high-risk requests. `COMPLAINT` remains an intent label; its expected executable
+route is `HUMAN_HANDOFF`.
 
 ```bash
-python3 scripts/evaluation/evaluate_route_predictions.py \
-  --dataset docs/evaluation/route-agent-dataset.jsonl \
-  --predictions docs/evaluation/route-agent-predictions.sample.jsonl \
-  --min-accuracy 0.85
+python3 scripts/evaluation/evaluate_route_agent.py
 ```
 
-## 3. 状态与可观测性
-- [ ] 每个任务具备 `task_id`
-- [ ] 每步执行具备 `agent_id` + `trace_id`
-- [ ] 失败案例可追踪到输入、决策、输出
+The evaluator writes JSON and Markdown reports under `artifacts/evaluation/` and reports
+total cases, accuracy, macro-F1, per-intent precision/recall/F1, fallback/handoff rate,
+unsafe-route rate and a confusion matrix. The current deterministic fixture baseline is
+**98.75% accuracy**, **98.57% Macro-F1**, and **0% unsafe-route rate**. The blocking
+threshold is 98% accuracy and 0% unsafe routing.
 
-## 4. 结果质量
-- [ ] 多步任务完成率 >= 80%
-- [ ] 关键路径响应时间满足目标
-- [ ] 输出结果具备可解释性
+This score is deliberately labelled **offline contract**, not live LLM quality. Production
+shares `RouteSafetyPolicy` for low-confidence, complaint, payment, privilege-escalation and
+prompt-injection handoff behavior; Java tests exercise that component directly.
 
-## 5. 回归验证
-- [ ] 增加标准评测样本（当前 RouteAgent JSONL 24 条，后续扩到至少 50 条）
-- [ ] nightly 回归执行
-- [ ] 回归结果按版本归档
+## Optional Live Evaluation
+
+The same script accepts `--api-url` and an optional bearer token to read `ROUTE(1004)` events
+from a running service. This requires a model and is manual/workflow-dispatch only; it is not
+part of main CI.
+
+## Required Regression Evidence
+
+- `RouteSafetyPolicyTest`: low confidence, complaint, payment and prompt injection escalation.
+- `ActionPolicyGuardTest`: allowlist and direct-payment denial.
+- `AgentHarnessServiceTest`: idempotent preview and runtime failure observation.
+- `SseEventContractTest` and frontend client tests: payload validation and guaranteed `STOP`.
+- `scripts/acceptance.sh`: a no-LLM composed acceptance report.

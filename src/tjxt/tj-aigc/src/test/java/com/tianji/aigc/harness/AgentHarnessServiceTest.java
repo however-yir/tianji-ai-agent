@@ -5,6 +5,7 @@ import com.tianji.aigc.tools.result.CourseInfo;
 import com.tianji.api.client.course.CourseClient;
 import com.tianji.api.client.trade.TradeClient;
 import com.tianji.api.dto.course.CourseBaseInfoDTO;
+import com.tianji.api.dto.trade.OrderConfirmVO;
 import com.tianji.aigc.knowledgeops.KnowledgeOpsClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -35,6 +36,8 @@ class AgentHarnessServiceTest {
         ToolResultHolder.remove("request-1");
         ToolResultHolder.remove("request-denied");
         ToolResultHolder.remove("request-fail");
+        ToolResultHolder.remove("request-preview");
+        ToolResultHolder.remove("request-timeout");
     }
 
     @Test
@@ -123,6 +126,57 @@ class AgentHarnessServiceTest {
                     assertThat(traceMap.get("success")).isEqualTo(false);
                     assertThat(((String) traceMap.get("errorMessage"))).contains("connection refused");
                 });
+    }
+
+    @Test
+    void shouldMakeDuplicateOrderPreviewIdempotent() {
+        when(tradeClient.prePlaceOrder(List.of(1L))).thenReturn(OrderConfirmVO.builder()
+                .orderId(42L)
+                .totalAmount(0)
+                .courses(List.of())
+                .discounts(List.of())
+                .build());
+        AgentHarnessService service = newHarnessService();
+        AgentAction action = new AgentAction(
+                "order.preview",
+                "BUY",
+                "OrderTools.prePlaceOrder",
+                "request-preview",
+                "preview-42",
+                "session-1",
+                10001L,
+                Map.of("courseIds", List.of(1L))
+        );
+
+        AgentObservation first = service.execute(action);
+        AgentObservation duplicate = service.execute(action);
+
+        assertThat(first.success()).isTrue();
+        assertThat(duplicate).isSameAs(first);
+        verify(tradeClient).prePlaceOrder(List.of(1L));
+    }
+
+    @Test
+    void shouldRepresentRuntimeTimeoutAsFailureObservation() {
+        when(courseClient.baseInfo(1L, true)).thenThrow(new RuntimeException("read timed out"));
+        AgentHarnessService service = newHarnessService();
+        AgentAction action = new AgentAction(
+                "course.query",
+                "CONSULT",
+                "CourseTools.queryCourseById",
+                "request-timeout",
+                "session-1",
+                10001L,
+                Map.of("courseId", 1L)
+        );
+
+        AgentObservation observation = service.execute(action);
+
+        assertThat(observation.status()).isEqualTo("FAILURE");
+        assertThat(observation.errorMessage()).contains("timed out");
+        assertThat(observation.toTraceMap())
+                .containsEntry("traceId", "request-timeout")
+                .containsEntry("status", "FAILURE");
     }
 
     private AgentHarnessService newHarnessService() {

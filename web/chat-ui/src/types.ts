@@ -96,14 +96,19 @@ export type MemoryHit = {
 
 export type AgentHarnessTrace = {
   observationId?: string;
+  requestId?: string;
+  traceId?: string;
+  sessionId?: string;
   agentName?: string;
   toolName?: string;
   actionType?: string;
+  status?: "SUCCESS" | "FAILURE" | "DENIED" | string;
   allowed?: boolean;
   success?: boolean;
   policyReason?: string;
   resultField?: string;
   resultType?: string;
+  resultSummary?: string;
   errorMessage?: string;
   latencyMillis?: number;
   observedAt?: string;

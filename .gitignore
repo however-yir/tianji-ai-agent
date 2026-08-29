@@ -27,6 +27,7 @@
 coverage/
 tmp/
 .runtime/
+artifacts/
 
 # Local copy/conflict artifacts
 * 2

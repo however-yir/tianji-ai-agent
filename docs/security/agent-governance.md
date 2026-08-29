@@ -16,7 +16,7 @@
 | `course.search` | 扩展位 | `keyword` 非空 | 绕过业务搜索权限 |
 | `order.preview` | 已启用 | `courseIds` 为正数集合 | 支付、扣款、确认购买、自动购买 |
 | `knowledgeops.rag_query` | 已启用 | `query` 非空，KnowledgeOps 可用 | 泄露未授权知识库 |
-| `mcp.call` | 预留 | 后续补 Runtime 与权限模型 | 当前默认执行外部 MCP 工具 |
+| `mcp.call` | 预留 | 后续补 Runtime 与权限模型 | 当前默认拒绝，不能执行外部 MCP 工具 |
 
 ## 审计字段
 
@@ -33,6 +33,8 @@
 | `policyReason` | 给出允许或拒绝原因 |
 | `latencyMs` | 衡量运行时延迟 |
 | `resultField` | 映射前端 PARAM 字段 |
+| `traceId` | 将 ROUTE、Harness observation 和 SSE 会话关联起来 |
+| `status` | `SUCCESS`、`FAILURE` 或 `DENIED`，用于审计和指标 |
 
 ## 提示词与工具变更
 
@@ -53,6 +55,8 @@
 以下情况必须转人工：
 
 - 支付、扣款、退款、确认购买、自动购买。
+- `payment.*`、`admin.*`、`order.delete`、`price.modify`、`user.export` 等未授权动作。
+- 包含 `Ignore all previous instructions`、`bypass AgentHarness` 等提示注入的工具绕过请求。
 - 投诉、威胁、法律风险、合规风险。
 - RouteAgent 低置信度。
 - 课程、订单或 KnowledgeOps 依赖不可用且影响决策。

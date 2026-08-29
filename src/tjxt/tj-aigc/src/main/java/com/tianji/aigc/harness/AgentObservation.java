@@ -7,6 +7,7 @@ import java.util.UUID;
 
 public record AgentObservation(String observationId,
                                String requestId,
+                               String traceId,
                                String sessionId,
                                String agentName,
                                String toolName,
@@ -26,6 +27,7 @@ public record AgentObservation(String observationId,
         return new AgentObservation(
                 UUID.randomUUID().toString(),
                 action.requestId(),
+                action.requestId(),
                 action.sessionId(),
                 action.agentName(),
                 action.toolName(),
@@ -41,6 +43,13 @@ public record AgentObservation(String observationId,
         );
     }
 
+    public String status() {
+        if (!allowed) {
+            return "DENIED";
+        }
+        return success ? "SUCCESS" : "FAILURE";
+    }
+
     public <T> T resultAs(Class<T> resultType) {
         if (resultType == null || result == null || !resultType.isInstance(result)) {
             return null;
@@ -51,14 +60,19 @@ public record AgentObservation(String observationId,
     public Map<String, Object> toTraceMap() {
         Map<String, Object> trace = new LinkedHashMap<>();
         trace.put("observationId", observationId);
+        trace.put("requestId", requestId);
+        trace.put("traceId", traceId);
+        trace.put("sessionId", sessionId);
         trace.put("agentName", agentName);
         trace.put("toolName", toolName);
         trace.put("actionType", actionType);
+        trace.put("status", status());
         trace.put("allowed", allowed);
         trace.put("success", success);
         trace.put("policyReason", policyReason);
         trace.put("resultField", resultField);
         trace.put("resultType", result == null ? null : result.getClass().getSimpleName());
+        trace.put("resultSummary", result == null ? null : result.getClass().getSimpleName() + " available");
         trace.put("errorMessage", errorMessage);
         trace.put("latencyMillis", latencyMillis);
         trace.put("observedAt", observedAt.toString());

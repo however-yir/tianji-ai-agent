@@ -75,9 +75,10 @@ class AgentServiceImplTest {
 
         List<ChatEventVO> events = service.chat("推荐课程", "session-1").collectList().block();
 
-        assertThat(events).hasSize(2);
+        assertThat(events).hasSize(3);
         assertThat(events.get(0).getEventType()).isEqualTo(ChatEventTypeEnum.ROUTE.getValue());
         assertThat(events.get(1)).isEqualTo(downstreamEvent);
+        assertThat(events.get(2).getEventType()).isEqualTo(ChatEventTypeEnum.STOP.getValue());
     }
 
     @Test
@@ -199,6 +200,7 @@ class AgentServiceImplTest {
         assertThat(route.nextAgent()).isEqualTo(AgentTypeEnum.HUMAN_HANDOFF.getAgentName());
         assertThat(route.routeReason()).contains("置信度");
         assertThat(events.get(1)).isEqualTo(handoffEvent);
+        assertThat(events.get(2).getEventType()).isEqualTo(ChatEventTypeEnum.STOP.getValue());
     }
 
     @Test
@@ -305,13 +307,14 @@ class AgentServiceImplTest {
 
         List<ChatEventVO> events = service.chat("我要咨询课程", "session-route-fail").collectList().block();
 
-        assertThat(events).hasSize(2);
+        assertThat(events).hasSize(3);
         assertThat(events.get(0).getEventType()).isEqualTo(ChatEventTypeEnum.ROUTE.getValue());
         AgentServiceImpl.RouteResult route = (AgentServiceImpl.RouteResult) events.get(0).getEventData();
         assertThat(route.nextAgent()).isEqualTo(AgentTypeEnum.HUMAN_HANDOFF.getAgentName());
         assertThat(route.riskLevel()).isEqualTo("HIGH");
         assertThat(route.routeReason()).contains("RouteAgent");
         assertThat(events.get(1)).isEqualTo(handoffEvent);
+        assertThat(events.get(2).getEventType()).isEqualTo(ChatEventTypeEnum.STOP.getValue());
     }
 
     @Test

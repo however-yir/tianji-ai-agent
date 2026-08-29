@@ -2,15 +2,18 @@ package com.tianji.aigc.service.impl;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tianji.aigc.agent.AbstractAgent;
 import com.tianji.aigc.agent.Agent;
 import com.tianji.aigc.config.SystemPromptConfig;
 import com.tianji.aigc.enums.AgentTypeEnum;
 import com.tianji.aigc.enums.ChatEventTypeEnum;
+import com.tianji.aigc.observability.AgentMetrics;
+import com.tianji.aigc.route.RouteSafetyPolicy;
 import com.tianji.aigc.service.ChatService;
+import com.tianji.aigc.sse.SseEventContract;
 import com.tianji.aigc.vo.ChatEventVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -20,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -31,8 +35,8 @@ public class AgentServiceImpl implements ChatService {
     private final ChatClient openAiChatClient;
     private final SystemPromptConfig systemPromptConfig;
     private final Map<AgentTypeEnum, Agent> agentRegistry;
+    private final AgentMetrics agentMetrics;
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private static final double HANDOFF_CONFIDENCE_THRESHOLD = 0.65;
     private static final List<String> DEFAULT_CANDIDATE_AGENTS = List.of(
             AgentTypeEnum.RECOMMEND.getAgentName(),
             AgentTypeEnum.CONSULT.getAgentName(),
@@ -47,8 +51,17 @@ public class AgentServiceImpl implements ChatService {
     public AgentServiceImpl(ChatClient openAiChatClient,
                             SystemPromptConfig systemPromptConfig,
                             List<Agent> agents) {
+        this(openAiChatClient, systemPromptConfig, agents, AgentMetrics.noop());
+    }
+
+    @Autowired
+    public AgentServiceImpl(ChatClient openAiChatClient,
+                            SystemPromptConfig systemPromptConfig,
+                            List<Agent> agents,
+                            AgentMetrics agentMetrics) {
         this.openAiChatClient = openAiChatClient;
         this.systemPromptConfig = systemPromptConfig;
+        this.agentMetrics = agentMetrics;
         this.agentRegistry = agents.stream()
                 .collect(Collectors.toUnmodifiableMap(Agent::getAgentType, Function.identity()));
     }
@@ -81,6 +94,7 @@ public class AgentServiceImpl implements ChatService {
         }
 
         AgentTypeEnum agentTypeEnum = AgentTypeEnum.agentNameOf(route.nextAgent());
+        agentMetrics.recordRoute(route.nextAgent());
         log.info("[Agent路由] sessionId={}, 目标Agent={}, 耗时={}ms",
                 sessionId, agentTypeEnum, System.currentTimeMillis() - startTime);
 
@@ -98,13 +112,16 @@ public class AgentServiceImpl implements ChatService {
             agent = this.findAgentByType(AgentTypeEnum.HUMAN_HANDOFF);
         }
         if (null == agent) {
-            return Flux.just(routeEvent, AbstractAgent.STOP_EVENT);
+            return completeSseStream(routeEvent, Flux.empty(), sessionId);
         }
 
-        return Flux.concat(
-                Flux.just(routeEvent),
-                agent.processStream(question, sessionId)
-        );
+        try {
+            return completeSseStream(routeEvent, agent.processStream(question, sessionId), sessionId);
+        } catch (RuntimeException streamFailure) {
+            log.warn("[Agent路由] 子Agent启动流失败，sessionId={}, agent={}",
+                    sessionId, agentTypeEnum, streamFailure);
+            return completeSseStream(routeEvent, Flux.error(streamFailure), sessionId);
+        }
     }
 
     @Override
@@ -127,6 +144,20 @@ public class AgentServiceImpl implements ChatService {
     private Agent findAgentByType(AgentTypeEnum agentTypeEnum) {
         if (agentTypeEnum == null) return null;
         return this.agentRegistry.get(agentTypeEnum);
+    }
+
+    private Flux<ChatEventVO> completeSseStream(ChatEventVO routeEvent, Flux<ChatEventVO> childStream,
+                                                 String sessionId) {
+        AtomicBoolean failed = new AtomicBoolean(false);
+        return SseEventContract.terminate(routeEvent, childStream, sessionId)
+                .doOnNext(event -> {
+                    if (event.getEventType() == ChatEventTypeEnum.TRACE.getValue()
+                            && event.getEventData() instanceof Map<?, ?> trace
+                            && "FAILURE".equals(trace.get("status"))) {
+                        failed.set(true);
+                    }
+                })
+                .doOnComplete(() -> agentMetrics.recordSseSession(failed.get()));
     }
 
     private RouteResult parseRouteResult(String raw) {
@@ -231,7 +262,7 @@ public class AgentServiceImpl implements ChatService {
     }
 
     private RouteResult applyHumanHandoffPolicy(String question, RouteResult route) {
-        String handoffReason = resolveHumanHandoffReason(question, route);
+        String handoffReason = RouteSafetyPolicy.handoffReason(question, route.nextAgent(), route.confidence());
         if (!StringUtils.hasText(handoffReason)) {
             return route;
         }
@@ -255,32 +286,6 @@ public class AgentServiceImpl implements ChatService {
                 "HIGH",
                 Collections.unmodifiableList(candidates)
         );
-    }
-
-    private String resolveHumanHandoffReason(String question, RouteResult route) {
-        String normalized = question == null ? "" : question.toLowerCase();
-        if (route.confidence() < HANDOFF_CONFIDENCE_THRESHOLD) {
-            return "路由置信度低于人工兜底阈值";
-        }
-        if (AgentTypeEnum.COMPLAINT.getAgentName().equals(route.nextAgent()) || containsAny(normalized,
-                "投诉", "差评", "举报", "维权", "欺诈", "被骗", "骗人", "315")) {
-            return "投诉或维权类问题需要人工介入";
-        }
-        if (containsAny(normalized,
-                "支付失败", "付款失败", "已扣款", "扣款", "重复扣费", "银行卡", "信用卡",
-                "支付密码", "验证码", "转账", "不到账", "退款到账")) {
-            return "支付敏感问题需要人工确认";
-        }
-        return "";
-    }
-
-    private boolean containsAny(String text, String... keywords) {
-        for (String keyword : keywords) {
-            if (text.contains(keyword)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     public record RouteResult(String intent, double confidence, String reason, String routeReason,

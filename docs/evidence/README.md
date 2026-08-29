@@ -1,6 +1,25 @@
 # Tianji AI Agent Evidence Pack
 
-This pack collects the shortest public proof path for reviewing the business Agent workflow.
+This is the short public proof path for reviewing the business Agent workflow. Every item below
+points to runnable code, an executable contract, or a deliberately scoped manual procedure.
+
+## Evidence Index
+
+| What to verify | Evidence |
+| --- | --- |
+| Product demo | [Demo GIF](../assets/screenshots/demo.gif) and [demo script](../demo-script.md) |
+| Core architecture | [README business flow](../../README.md#一眼看懂) and [agent design](../agent-design.md) |
+| Agent action governance | [AgentHarness design](../agent-harness.md), [security policy](../security/agent-governance.md), `ActionPolicyGuardTest` |
+| Route evaluation | [160-case offline contract](../evaluation/route-agent-dataset.jsonl) and [evaluation checklist](../evaluation/multi-agent-eval-checklist.md) |
+| End-to-end acceptance | `bash scripts/acceptance.sh` → `artifacts/acceptance/acceptance-report.json` |
+| SSE behavior | [SSE contract](../sse-contract.md), `SseEventContractTest`, `web/chat-ui/src/api/client.test.ts` |
+| Buy state machine | [state-machine image](../assets/screenshots/buy-state-machine.svg), `BuyAgent`, `OrderToolsHarnessTest` |
+| Observability | [SLO and alerting](../observability/slo-and-alerting.md), `AgentMetrics`, Harness TRACE |
+| CI boundary | [CI workflow](../../.github/workflows/ci.yml), [release checklist](../release-checklist.md) |
+| Production notes | [launch plan](../production-launch-plan.md), [runbook](../ops/runbook.md) |
+
+Generated evaluation, acceptance and coverage reports are GitHub Actions artifacts; they are not
+checked into Git, so the repository does not confuse a historical report with current evidence.
 
 ## Runtime Evidence
 

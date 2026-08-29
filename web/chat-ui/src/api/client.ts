@@ -5,6 +5,7 @@ import type {
 } from "../types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+const SSE_EVENT_TYPES = new Set([1001, 1002, 1003, 1004, 1005, 1006, 1007]);
 
 // ---------------------------------------------------------------------------
 // Token storage: sessionStorage + TTL
@@ -147,6 +148,7 @@ export async function streamChatEvents(
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  let stopReceived = false;
   for (;;) {
     const { value, done } = await reader.read();
     if (done) break;
@@ -161,12 +163,47 @@ export async function streamChatEvents(
         .join("");
       if (!dataLine || dataLine === "[DONE]") continue;
       try {
-        onEvent(JSON.parse(dataLine) as ChatEventPayload);
+        const event = JSON.parse(dataLine) as ChatEventPayload;
+        if (!isValidChatEvent(event)) continue;
+        onEvent(event);
+        if (event.eventType === 1002) {
+          stopReceived = true;
+          await reader.cancel();
+          return;
+        }
       } catch {
         /* ignore malformed chunk */
       }
     }
   }
+  if (!stopReceived) {
+    throw new Error("服务端流式响应未按协议返回 STOP，请稍后重试。");
+  }
+}
+
+export function isValidChatEvent(event: ChatEventPayload): boolean {
+  if (!SSE_EVENT_TYPES.has(event.eventType ?? 0)) return false;
+  const payload = event.eventData;
+  switch (event.eventType) {
+    case 1001:
+      return typeof payload === "string" && payload.length > 0;
+    case 1002:
+      return true;
+    case 1003:
+      return isRecord(payload);
+    case 1004:
+      return payload !== null && typeof payload === "object";
+    case 1005:
+    case 1006:
+    case 1007:
+      return Array.isArray(payload) || isRecord(payload);
+    default:
+      return false;
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 // ---------------------------------------------------------------------------

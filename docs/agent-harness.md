@@ -48,6 +48,19 @@ RouteAgent
 
 因此当前链路只能生成订单确认信息，不能真实支付，也不能自动确认购买。
 
+`order.preview` 的幂等键是 `actionType + userId + actionId`；未提供独立 `actionId` 时使用
+`requestId`。这是单实例 Harness 的最小重复调用保护，正式交易仍必须在交易服务中保持跨实例幂等。
+
+## Observation And Metrics
+
+每次动作都会产生 `AgentObservation`，并在 TRACE 中输出 `requestId`、`traceId`、`sessionId`、
+agent、action、`status`、policy decision、result summary、latency 和安全的 failure reason。
+完整工具结果只保留在 PARAM 的业务卡片路径，不会被复制到日志或指标标签。
+
+Micrometer 记录低基数指标：`agent.route.total`、`agent.route.handoff`、`agent.action.total`、
+`agent.action.denied`、`agent.runtime.success`、`agent.runtime.failure`、`agent.runtime.latency`、
+`sse.session.completed` 和 `sse.session.failed`。
+
 ## SSE 输出
 
 Harness 会把两类数据写入现有事件体系：
