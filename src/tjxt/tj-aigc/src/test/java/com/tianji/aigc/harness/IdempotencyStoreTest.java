@@ -24,15 +24,16 @@ class IdempotencyStoreTest {
 
     @Test
     void shouldClaimExactlyOnceAndCacheTheCompletedResult() {
-        assertThat(store.tryAcquire("k1", 5000)).isTrue();
-        assertThat(store.tryAcquire("k1", 5000)).isFalse();
+        String owner = store.tryAcquire("k1", 5000);
+        assertThat(owner).isNotNull();
+        assertThat(store.tryAcquire("k1", 5000)).isNull();
 
-        store.complete("k1", observation("k1"), 5000);
+        store.complete("k1", observation("k1"), 5000, owner);
 
         assertThat(store.get("k1")).isPresent();
         assertThat(store.get("k1").orElseThrow().success()).isTrue();
         // completed slot blocks a duplicate claim while the result is cached
-        assertThat(store.tryAcquire("k1", 5000)).isFalse();
+        assertThat(store.tryAcquire("k1", 5000)).isNull();
     }
 
     @Test
@@ -46,7 +47,7 @@ class IdempotencyStoreTest {
                 pool.submit(() -> {
                     try {
                         start.await();
-                        if (store.tryAcquire("concurrent-key", 5000)) {
+                        if (store.tryAcquire("concurrent-key", 5000) != null) {
                             winners.incrementAndGet();
                         }
                     }
@@ -67,25 +68,39 @@ class IdempotencyStoreTest {
 
     @Test
     void shouldTreatExpiredClaimAsReacquirable() throws Exception {
-        assertThat(store.tryAcquire("expiring", 30)).isTrue();
+        assertThat(store.tryAcquire("expiring", 30)).isNotNull();
         Thread.sleep(50);
 
-        assertThat(store.tryAcquire("expiring", 5000)).isTrue();
+        assertThat(store.tryAcquire("expiring", 5000)).isNotNull();
     }
 
     @Test
     void shouldAllowRetryAfterRelease() {
-        assertThat(store.tryAcquire("retryable", 5000)).isTrue();
-        store.release("retryable");
+        String owner = store.tryAcquire("retryable", 5000);
+        assertThat(owner).isNotNull();
+        store.release("retryable", owner);
 
-        assertThat(store.tryAcquire("retryable", 5000)).isTrue();
+        assertThat(store.tryAcquire("retryable", 5000)).isNotNull();
         assertThat(store.get("retryable")).isEmpty();
     }
 
     @Test
     void differentKeysDoNotCollide() {
-        assertThat(store.tryAcquire("user-1:preview", 5000)).isTrue();
-        assertThat(store.tryAcquire("user-2:preview", 5000)).isTrue();
-        assertThat(store.tryAcquire("user-1:search", 5000)).isTrue();
+        assertThat(store.tryAcquire("user-1:preview", 5000)).isNotNull();
+        assertThat(store.tryAcquire("user-2:preview", 5000)).isNotNull();
+        assertThat(store.tryAcquire("user-1:search", 5000)).isNotNull();
+    }
+    @Test
+    void shouldNotCompleteOrReleaseWithForeignToken() {
+        String owner = store.tryAcquire("protected", 5000);
+        assertThat(owner).isNotNull();
+
+        // foreign owner cannot complete (result stays absent) ...
+        store.complete("protected", observation("protected"), 5000, "foreign-token");
+        assertThat(store.get("protected")).isEmpty();
+
+        // ... nor release the claim of the real owner
+        store.release("protected", "foreign-token");
+        assertThat(store.tryAcquire("protected", 5000)).isNull();
     }
 }

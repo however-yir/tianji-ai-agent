@@ -28,6 +28,18 @@
   deterministic selection, `verify.sh`/`Makefile`/`agentops.py` developer entry points,
   ADR set and AgentOps docs.
 
+### Fixed (final RC review)
+
+- **P0**: single `@Autowired` constructor on `AgentServiceImpl` (Spring startup under
+  production profiles is now valid).
+- **P1**: illegal routing targets (e.g. `nextAgent: ADMIN`) are rewritten to
+  `HUMAN_HANDOFF` before the ROUTE event, carry a rejection reason and produce a handoff
+  ticket.
+- **P1**: idempotency claims are owner-token based with compare-and-swap completion and
+  release (no stale-executor overwrite); the claim lease covers the full runtime budget.
+- **P2**: removed dead `toolBudgetExceeded` logic; `RouteSafetyPolicy` vocabulary is now
+  driven by the 160-case dataset test (RouteDatasetContractTest, 160/160 aligned).
+
 ### Changed
 
 - Spring AI upgraded 1.0.0-M6 -> **1.0.9 GA**; DashScope now uses the OpenAI-compatible

@@ -14,9 +14,15 @@ import org.springframework.stereotype.Service;
 @Service
 public class AgentHarnessService {
 
-    /** In-flight claim guard for order.preview; result cache TTL for duplicates. */
-    private static final long CLAIM_TTL_MILLIS = 30_000L;
+    /** Result cache TTL for duplicate callers (completed preview results). */
     private static final long RESULT_TTL_MILLIS = 600_000L;
+
+    /** Lease must cover the full run budget: runtime budget + a safety margin. */
+    private static final long CLAIM_LEASE_MARGIN_MILLIS = 30_000L;
+
+    private long claimLeaseMillis() {
+        return budgetService.settings().getMaxRuntimeSeconds() * 1000L + CLAIM_LEASE_MARGIN_MILLIS;
+    }
 
     private final ActionPolicyGuard policyGuard;
     private final AgentRuntime agentRuntime;
@@ -101,9 +107,9 @@ public class AgentHarnessService {
     private AgentObservation executeIdempotent(AgentAction action, ActionPolicyDecision decision,
                                                long startTime) {
         String key = action.idempotencyKey();
-        boolean acquired;
+        String ownerToken;
         try {
-            acquired = idempotencyStore.tryAcquire(key, CLAIM_TTL_MILLIS);
+            ownerToken = idempotencyStore.tryAcquire(key, claimLeaseMillis());
         }
         catch (RuntimeException storeFailure) {
             log.warn("[AgentHarness] 幂等存储不可用，拒绝重复执行, key={}: {}", key, storeFailure.getMessage());
@@ -113,7 +119,7 @@ public class AgentHarnessService {
             record(observation);
             return observation;
         }
-        if (!acquired) {
+        if (ownerToken == null) {
             // Duplicate in-flight or already completed: no second execution.
             return idempotencyStore.get(key).orElseGet(() -> AgentObservation.of(
                     action, decision, false, null, null,
@@ -121,10 +127,10 @@ public class AgentHarnessService {
         }
         AgentObservation observation = executeAllowedAction(action, decision, startTime);
         if (observation.allowed() && observation.success()) {
-            idempotencyStore.complete(key, observation, RESULT_TTL_MILLIS);
+            idempotencyStore.complete(key, observation, RESULT_TTL_MILLIS, ownerToken);
         }
         else {
-            idempotencyStore.release(key);
+            idempotencyStore.release(key, ownerToken);
         }
         return observation;
     }

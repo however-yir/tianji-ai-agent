@@ -29,7 +29,6 @@ public class BudgetState {
     private boolean modelFallbackUsed;
     private final Map<String, Integer> actionCounts = new LinkedHashMap<>();
     private final Deque<String> recentSignatures = new ArrayDeque<>();
-    private final Map<String, String> lastFailure = new LinkedHashMap<>();
 
     public BudgetState(ExecutionBudgetProperties settings) {
         this.settings = settings;
@@ -101,9 +100,6 @@ public class BudgetState {
 
     public synchronized void afterToolCall(long millis) {
         toolCallsMillis += millis;
-        if (toolCallsMillis > settings.getMaxToolMillis()) {
-            lastFailure.put("toolTimeout", "工具累计耗时超出预算: " + toolCallsMillis + "ms");
-        }
     }
 
     public synchronized void recordTokens(int in, int out) {
@@ -129,10 +125,6 @@ public class BudgetState {
 
     public synchronized boolean expired() {
         return System.currentTimeMillis() >= deadlineMillis;
-    }
-
-    public synchronized boolean toolBudgetExceeded() {
-        return !lastFailure.containsKey("toolTimeout") && toolCallsMillis > settings.getMaxToolMillis();
     }
 
     public synchronized long startedAtMillis() {

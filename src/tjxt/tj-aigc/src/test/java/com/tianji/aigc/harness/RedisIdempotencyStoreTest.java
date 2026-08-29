@@ -8,6 +8,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 
 import java.time.Duration;
 import java.util.List;
@@ -27,10 +28,12 @@ class RedisIdempotencyStoreTest {
 
     @Mock
     private StringRedisTemplate redisTemplate;
+
     @Mock
     private ValueOperations<String, String> valueOps;
 
     private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+
     private RedisIdempotencyStore store;
 
     @BeforeEach
@@ -47,42 +50,55 @@ class RedisIdempotencyStoreTest {
     }
 
     @Test
-    void shouldClaimWithSetNxTtl() {
+    void shouldClaimWithSetNxTtlAndReturnOwnerToken() {
         when(redisTemplate.opsForValue()).thenReturn(valueOps);
-        when(valueOps.setIfAbsent(eq("tj:harness:idem:order.preview:10001:preview-r1"), eq("1"), any(Duration.class)))
+        when(valueOps.setIfAbsent(eq("tj:harness:idem:k1"), anyString(), any(Duration.class)))
                 .thenReturn(true);
 
-        assertThat(store.tryAcquire("order.preview:10001:preview-r1", 5000)).isTrue();
-        verify(valueOps).setIfAbsent(anyString(), eq("1"), any(Duration.class));
+        String token = store.tryAcquire("k1", 5000);
+
+        assertThat(token).isNotNull();
+        verify(valueOps).setIfAbsent(eq("tj:harness:idem:k1"), eq(token), eq(Duration.ofMillis(5000)));
     }
 
     @Test
-    void shouldReportDuplicateClaim() {
+    void shouldReportDuplicateClaimAsNullToken() {
         when(redisTemplate.opsForValue()).thenReturn(valueOps);
         when(valueOps.setIfAbsent(anyString(), anyString(), any(Duration.class))).thenReturn(false);
 
-        assertThat(store.tryAcquire("k", 5000)).isFalse();
+        assertThat(store.tryAcquire("k", 5000)).isNull();
     }
 
     @Test
-    void shouldPublishAndRoundTripObservationJson() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOps);
+    void shouldCompleteAndReleaseAsCompareAndSwap() {
+        store.complete("k1", observation(), 60000, "owner-1");
+        verify(redisTemplate).execute(
+                any(DefaultRedisScript.class),
+                eq(List.of("tj:harness:idem:k1")),
+                org.mockito.ArgumentMatchers.<List<Object>>argThat(args ->
+                        args.toString().contains("owner-1") && args.toString().contains("order.preview")));
+
+        store.release("k3", "owner-2");
+        verify(redisTemplate).execute(
+                any(DefaultRedisScript.class),
+                eq(List.of("tj:harness:idem:k3")),
+                org.mockito.ArgumentMatchers.<List<Object>>argThat(args -> args.toString().contains("owner-2")));
+    }
+
+    @Test
+    void shouldSerializeObservationForCasWrite() {
         AgentObservation observation = observation();
-        store.complete("k1", observation, 60000);
+        store.complete("k1", observation, 60000, "owner-r1");
 
-        verify(valueOps).set(eq("tj:harness:idem:k1"), anyString(), eq(Duration.ofMillis(60000)));
-        // feed the serialized value back as if read from Redis
-        when(valueOps.get("tj:harness:idem:k1")).thenAnswer(invocation -> {
-            var captor = org.mockito.ArgumentCaptor.forClass(String.class);
-            verify(valueOps).set(eq("tj:harness:idem:k1"), captor.capture(), any(Duration.class));
-            return captor.getValue();
-        });
-
-        Optional<AgentObservation> restored = store.get("k1");
-        assertThat(restored).isPresent();
-        assertThat(restored.orElseThrow().actionType()).isEqualTo("order.preview");
-        assertThat(restored.orElseThrow().traceId()).isEqualTo("request-r1");
-        assertThat(restored.orElseThrow().status()).isEqualTo("SUCCESS");
+        verify(redisTemplate).execute(
+                any(DefaultRedisScript.class),
+                eq(List.of("tj:harness:idem:k1")),
+                org.mockito.ArgumentMatchers.<List<Object>>argThat(args -> {
+                    // ARGV: [ownerToken, serializedObservation, ttlMillis]
+                    assertThat(args.get(0)).isEqualTo("owner-r1");
+                    assertThat(String.valueOf(args.get(1))).contains("order.preview");
+                    return true;
+                }));
     }
 
     @Test
@@ -91,13 +107,6 @@ class RedisIdempotencyStoreTest {
         when(valueOps.get("tj:harness:idem:k2")).thenReturn(null);
 
         assertThat(store.get("k2")).isEmpty();
-    }
-
-    @Test
-    void shouldReleaseByDeletingKey() {
-        store.release("k3");
-
-        verify(redisTemplate).delete("tj:harness:idem:k3");
     }
 
     @Test

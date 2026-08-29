@@ -229,12 +229,12 @@ class AgentHarnessServiceTest {
     void shouldFailClosedWhenIdempotencyStoreIsUnavailable() {
         IdempotencyStore broken = new IdempotencyStore() {
             @Override
-            public boolean tryAcquire(String key, long ttlMillis) {
+            public String tryAcquire(String key, long ttlMillis) {
                 throw new IllegalStateException("redis connection refused");
             }
 
             @Override
-            public void complete(String key, AgentObservation observation, long ttlMillis) {
+            public void complete(String key, AgentObservation observation, long ttlMillis, String ownerToken) {
             }
 
             @Override
@@ -243,7 +243,7 @@ class AgentHarnessServiceTest {
             }
 
             @Override
-            public void release(String key) {
+            public void release(String key, String ownerToken) {
             }
         };
         AgentHarnessService service = new AgentHarnessService(

@@ -61,7 +61,7 @@ public class AgentServiceImpl implements ChatService {
                         new com.tianji.aigc.run.CostEstimator(new com.tianji.aigc.run.ModelPricingProperties())));
     }
 
-    @Autowired
+    /** Compatibility constructor for tests; Spring uses the @Autowired 5-arg ctor below. */
     public AgentServiceImpl(ChatClient openAiChatClient,
                             SystemPromptConfig systemPromptConfig,
                             List<Agent> agents,
@@ -116,6 +116,19 @@ public class AgentServiceImpl implements ChatService {
         }
 
         AgentTypeEnum agentTypeEnum = AgentTypeEnum.agentNameOf(route.nextAgent());
+        if (agentTypeEnum == null) {
+            // An unknown/illegal routing target must fail safe: rewrite the route to human
+            // handoff BEFORE the ROUTE event so the front end and the handoff contract agree.
+            log.warn("[Agent路由] 非法路由目标={}，改写为人工兜底, sessionId={}", route.nextAgent(), sessionId);
+            route = new RouteResult(
+                    route.intent(), route.confidence(), route.reason(),
+                    "非法路由目标 " + route.nextAgent() + "，已改写为人工兜底",
+                    AgentTypeEnum.HUMAN_HANDOFF.getAgentName(),
+                    route.needRag(), route.needMemory(), "HIGH",
+                    List.of(AgentTypeEnum.HUMAN_HANDOFF.getAgentName()),
+                    route.handoffId(), route.handoffSummary(), route.runId());
+            agentTypeEnum = AgentTypeEnum.HUMAN_HANDOFF;
+        }
         agentMetrics.recordRoute(route.nextAgent());
         log.info("[Agent路由] sessionId={}, 目标Agent={}, 耗时={}ms",
                 sessionId, agentTypeEnum, System.currentTimeMillis() - startTime);

@@ -26,6 +26,10 @@ public class ExecutionBudgetService {
         return state;
     }
 
+    public ExecutionBudgetProperties settings() {
+        return settings;
+    }
+
     public Optional<BudgetState> current(String requestId) {
         Object state = ToolResultHolder.get(requestId, BUDGET_FIELD);
         return state instanceof BudgetState budget ? Optional.of(budget) : Optional.empty();

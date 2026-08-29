@@ -5,29 +5,30 @@ import java.util.Optional;
 /**
  * Agent-action duplicate suppression, scoped to {@code actionType:userId:actionId}.
  *
+ * <p>Claims are owner-token based: {@link #tryAcquire} hands out a per-claim token that
+ * must be presented to {@link #complete} / {@link #release}, so a stale executor can never
+ * overwrite another owner's result. The claim TTL covers the full run budget.
+ *
  * <p>This is NOT a replacement for transaction-level idempotency of the underlying
- * business services (payment, order). The business system remains the source of truth;
- * the store only guarantees that the same agent action is executed by at most one
- * caller. When the production store (Redis) is unavailable the harness fails closed
- * instead of silently executing a duplicate.
+ * business services. The business system remains the source of truth. When the production
+ * store (Redis) is unavailable the harness fails closed instead of silently duplicating.
  */
 public interface IdempotencyStore {
 
     /**
      * Atomically claim the right to execute for {@code key}.
      *
-     * @return true when this caller owns the execution; false when another caller
-     *         already claimed the key or a completed result is still cached
+     * @return the owner token when this caller owns the execution; {@code null} when
+     *         another caller already claimed the key or a completed result is cached
      * @throws RuntimeException when the backing store is unavailable (fail closed)
      */
-    boolean tryAcquire(String key, long ttlMillis);
+    String tryAcquire(String key, long ttlMillis);
 
     /**
-     * Store the finished observation under {@code key}. Only the owner should call this.
-     *
-     * @param ttlMillis how long the completed result stays reusable for duplicates
+     * Store the finished observation under {@code key} only when the caller still owns the
+     * claim (compare-and-swap). No-op otherwise.
      */
-    void complete(String key, AgentObservation observation, long ttlMillis);
+    void complete(String key, AgentObservation observation, long ttlMillis, String ownerToken);
 
     /**
      * @return the cached completed observation, if one is still within its TTL
@@ -36,7 +37,7 @@ public interface IdempotencyStore {
 
     /**
      * Release the claim without caching a result, allowing the same key to retry.
-     * The caller should be the current owner (used when an action failed).
+     * Only effective when {@code ownerToken} matches the current claim owner.
      */
-    void release(String key);
+    void release(String key, String ownerToken);
 }

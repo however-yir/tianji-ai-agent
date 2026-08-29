@@ -79,7 +79,7 @@ def build_manifest(root: Path, metrics: Path | None, image_digest: str = "") -> 
         "promptVersions": prompt_versions(root),
         "promptChecksumAlgorithm": "sha256",
         "modelProfiles": model_profiles(root / "src/tjxt/tj-aigc/src/main/resources/application.yml"),
-        "policyVersion": "v1-action-policy-guard",
+        "policyVersion": "v1.1-route-safety-wordlist+action-guard",
         "executionBudgetVersion": "v1-budget",
         "evaluationDatasetHash": dataset_hash(root),
         "datasetHashAlgorithm": "sha256",

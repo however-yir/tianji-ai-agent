@@ -232,6 +232,31 @@ class AgentServiceImplTest {
     }
 
     @Test
+    void shouldRewriteIllegalRoutingTargetToHumanHandoffWithTicket() {
+        when(routeAgent.getAgentType()).thenReturn(AgentTypeEnum.ROUTE);
+        when(humanHandoffAgent.getAgentType()).thenReturn(AgentTypeEnum.HUMAN_HANDOFF);
+        when(routeAgent.process("请解释一下这个接口返回的状态码含义", "session-illegal"))
+                .thenReturn("{\"intent\":\"GENERAL\",\"confidence\":0.9,\"nextAgent\":\"ADMIN\"}");
+        ChatEventVO handoffEvent = ChatEventVO.builder()
+                .eventType(ChatEventTypeEnum.DATA.getValue())
+                .eventData("handoff")
+                .build();
+        when(humanHandoffAgent.processStream("请解释一下这个接口返回的状态码含义", "session-illegal"))
+                .thenReturn(Flux.just(handoffEvent));
+
+        AgentServiceImpl service = new AgentServiceImpl(
+                openAiChatClient, systemPromptConfig, List.of(routeAgent, humanHandoffAgent));
+
+        List<ChatEventVO> events = service.chat("请解释一下这个接口返回的状态码含义", "session-illegal")
+                .collectList().block();
+
+        AgentServiceImpl.RouteResult route = (AgentServiceImpl.RouteResult) events.get(0).getEventData();
+        assertThat(route.nextAgent()).isEqualTo(AgentTypeEnum.HUMAN_HANDOFF.getAgentName());
+        assertThat(route.routeReason()).contains("非法路由目标");
+        assertThat(route.handoffId()).startsWith("HF-");
+    }
+
+    @Test
     void shouldRoutePaymentSensitiveQuestionsToHumanHandoff() {
         when(routeAgent.getAgentType()).thenReturn(AgentTypeEnum.ROUTE);
         when(humanHandoffAgent.getAgentType()).thenReturn(AgentTypeEnum.HUMAN_HANDOFF);

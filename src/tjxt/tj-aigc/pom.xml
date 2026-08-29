@@ -235,6 +235,7 @@
                                         <include>com.tianji.aigc.route.*</include>
                                         <include>com.tianji.aigc.harness.*</include>
                                         <include>com.tianji.aigc.sse.*</include>
+                                        <include>com.tianji.aigc.tools.*</include>
                                         <include>com.tianji.aigc.observability.*</include>
                                         <include>com.tianji.aigc.service.impl.AgentServiceImpl</include>
                                     </includes>

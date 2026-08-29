@@ -19,6 +19,9 @@ service:
 env:
   SPRING_PROFILES_ACTIVE: local
   SERVER_PORT: "8094"
+  # Production hardening: enable the Redis idempotency store (agent-layer duplicate
+  # suppression across instances). Requires REDIS_HOST/REDIS_PORT/REDIS_PASSWORD secrets.
+  # TJ_AI_HARNESS_IDEMPOTENCY_STORE: redis
 
 envSecrets: {}
   # MYSQL_HOST: mysql-host
