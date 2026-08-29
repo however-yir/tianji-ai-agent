@@ -21,7 +21,8 @@ class HandoffRedactionTest {
 
     @Test
     void shouldMaskBearerTokensAndSecretKeys() {
-        String raw = "Authorization Bearer sk-abc123def456ghi789 password=Passw0rd1234 token: abcdef12345678";
+        // gitleaks:allow - deliberately fake credentials used only to test redaction
+        String raw = "Authorization Bearer sk-abc123def456ghi789 password=Passw0rd1234 token: abcdef12345678"; // gitleaks:allow
 
         String redacted = HandoffRedaction.redact(raw);
 
