@@ -85,6 +85,7 @@ export default function MessageBubble({
       <div className="feedback-row" data-testid="feedback-row">
         <button
           className={feedbackState === "UP" ? "feedback-btn active" : "feedback-btn"}
+          aria-label="赞"
           data-testid="feedback-up"
           onClick={() => sendFeedback(feedbackState === "UP" ? "SENT" : "UP")}
         >
@@ -92,6 +93,7 @@ export default function MessageBubble({
         </button>
         <button
           className={feedbackState === "DOWN" ? "feedback-btn active" : "feedback-btn"}
+          aria-label="踩"
           data-testid="feedback-down"
           onClick={() => sendFeedback(feedbackState === "DOWN" ? "SENT" : "DOWN")}
         >

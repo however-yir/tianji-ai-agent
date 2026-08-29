@@ -23,6 +23,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 class InMemoryAttachmentServiceTest {
 
     private final InMemoryAttachmentService attachmentService = new InMemoryAttachmentService();
+    @Test
+    void shouldRejectOversizedAttachmentWithServiceLevelGuard() {
+        org.springframework.mock.web.MockMultipartFile big = new org.springframework.mock.web.MockMultipartFile(
+                "file", "big.pdf", "application/pdf", new byte[(int) (8L * 1024 * 1024 + 1)]);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> attachmentService.upload(List.of(big)))
+                .isInstanceOf(com.tianji.common.exceptions.BadRequestException.class)
+                .hasMessageContaining("8MB");
+    }
 
     @AfterEach
     void tearDown() {

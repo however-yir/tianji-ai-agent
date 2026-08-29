@@ -202,3 +202,21 @@ deletion clears memory + attachments. Evidence: `RedisChatMemoryTest` + `DELETE 
 
 **No.** Tianji does not persist or expose private chain-of-thought. It records structured
 operational decisions and observable evidence only (see [ADR-002](../adr/ADR-002-no-chain-of-thought-persistence.md)).
+
+## Final Invariant Mapping (RC Audit)
+
+| Invariant | Test |
+| --- | --- |
+| LLM cannot execute privileged business operations | `ActionPolicyGuardTest` |
+| All business actions pass deterministic governance | `AgentHarnessServiceTest`, `ExecutionBudgetGuardTest` |
+| BUY never means direct payment | `ActionPolicyGuardTest.shouldBlockPaymentAndAutoConfirmationActions` |
+| Dangerous/unknown/low-confidence fail safe | `RouteSafetyPolicyTest`, `AgentServiceImplTest` |
+| Every streaming run reaches one deterministic terminal | `SseEventContractTest` (STOP exactly once, late-data suppressed, malformed payload) |
+| User A cannot access User B state | session ownership guard (`ChatSessionServiceImpl.assertSessionOwnership`) + key isolation; demo modes documented |
+| One request cannot consume unbounded resources | `ExecutionBudgetService`/`BudgetState` caps + bounded SSE buffer |
+| Run evidence contains no CoT or secrets | `RunRecorderTest` (metadata only), `HandoffRedactionTest` |
+| Same idempotency key cannot duplicate side effects | `IdempotencyStoreTest`, `RedisIdempotencyStoreTest`, harness concurrent-preview test |
+| External failures cannot silently cross the safety boundary | `ExecutionBudgetGuardTest.shouldFailClosedWhenIdempotencyStoreIsUnavailable` |
+
+Tianji does not persist or expose private chain-of-thought. It records structured
+operational decisions and observable evidence only.

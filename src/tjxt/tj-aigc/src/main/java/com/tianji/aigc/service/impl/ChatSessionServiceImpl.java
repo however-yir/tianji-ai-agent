@@ -82,6 +82,7 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
 
     @Override
     public List<MessageVO> queryBySessionId(String sessionId) {
+        assertSessionOwnership(sessionId);
         // 根据会话ID获取对话ID
         String conversationId = ChatService.getConversationId(sessionId);
         // 从Redis中获取历史消息
@@ -109,10 +110,30 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
 
     @Override
     public void deleteSession(String sessionId) {
+        assertSessionOwnership(sessionId);
         super.lambdaUpdate()
                 .eq(ChatSession::getSessionId, sessionId)
                 .remove();
         this.chatMemory.clear(ChatService.getConversationId(sessionId));
+    }
+
+    /**
+     * Ownership guard: when an authenticated user context is present (production auth
+     * chain), a session may only be read/deleted by its owner. Demo modes without auth
+     * keep the previous behavior (documented known limitation).
+     */
+    private void assertSessionOwnership(String sessionId) {
+        Long userId = com.tianji.common.utils.UserContext.getUser();
+        if (userId == null || userId <= 0) {
+            return;
+        }
+        boolean owned = super.lambdaQuery()
+                .eq(ChatSession::getSessionId, sessionId)
+                .eq(ChatSession::getUserId, userId)
+                .count() > 0;
+        if (!owned) {
+            throw new com.tianji.common.exceptions.ForbiddenException(403, "无权访问该会话");
+        }
     }
 
     @Async

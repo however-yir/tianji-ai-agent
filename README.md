@@ -1,6 +1,6 @@
 # Tianji AI Agent
 
-> **Production-oriented multi-agent course advisor with deterministic action governance, offline regression evaluation, SSE business contracts and observable tool execution.**
+> **Production-oriented multi-agent course advisor with deterministic action governance, bounded execution, offline regression evaluation, replayable AgentOps evidence and observable SSE business workflows.**
 >
 > 这不是框架 Demo 或 AI 技术合集，而是一个围绕课程推荐、咨询、预下单、售后与转人工的可运行业务 Agent 案例。
 
@@ -225,6 +225,8 @@ sequenceDiagram
 | 语音/多模态入口 | `上传一张课程截图，或用语音问“这门课适合我吗”` | `/attachment/upload`、`/chat`（语音输入走浏览器 Web Speech API，后端 `/audio/*` 能力当前未接入前端） | 附件引用、语音输入、流式回复 |
 
 证据索引见 [docs/evidence/README.md](docs/evidence/README.md)，包含运行路径、截图、Agent 设计文档、CI 和发布信息。
+
+原创性边界见 [docs/provenance.md](docs/provenance.md)，诚实限制见 [docs/known-limitations.md](docs/known-limitations.md)，维护模式见 [docs/maintenance-policy.md](docs/maintenance-policy.md)。
 
 ## 后端核心
 

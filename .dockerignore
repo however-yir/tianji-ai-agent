@@ -1,0 +1,7 @@
+# Final RC: keep the build context minimal — the Dockerfile only consumes src/tjxt.
+*
+!src/
+!src/tjxt/
+**/target
+**/node_modules
+**/*.log

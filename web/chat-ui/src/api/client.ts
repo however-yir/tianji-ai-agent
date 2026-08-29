@@ -153,6 +153,9 @@ export async function streamChatEvents(
     const { value, done } = await reader.read();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
+    // SSE permits CRLF framing; proxies and encoders may emit either. Normalize once
+    // per chunk so split("\n\n") reliably finds frame boundaries.
+    buffer = buffer.replace(/\r\n/g, "\n");
     const blocks = buffer.split("\n\n");
     buffer = blocks.pop() || "";
     for (const block of blocks) {
