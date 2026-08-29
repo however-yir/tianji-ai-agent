@@ -168,6 +168,33 @@ sequenceDiagram
 - **Governance:** real production `ActionPolicyGuard`, `AgentHarnessService`, `AgentRuntime`, tools and `RouteSafetyPolicy` are covered by Java tests.
 - **SSE:** backend and frontend share the [SSE business contract](docs/sse-contract.md): malformed events are rejected, stream failures become a safe trace, and every response terminates with `STOP`.
 - **Acceptance:** `bash scripts/acceptance.sh` runs the no-LLM evaluator, real Harness/Runtime/SSE contracts and frontend SSE tests, then writes `artifacts/acceptance/acceptance-report.json`.
+- **Dependency baseline:** Spring AI 1.0.9 GA line (Migrated from milestone M6); the decision record — including why 1.1.x / 2.x are not taken yet and how DashScope is reached via the OpenAI-compatible endpoint — is in [docs/dependency-baseline.md](docs/dependency-baseline.md).
+
+### CI Evidence Table
+
+| Evidence | Status | How to reproduce |
+|---|---|---|
+| Offline route evaluation (160 cases, 98.75%, 0 unsafe) | blocking gate | `python3 scripts/evaluation/evaluate_route_agent.py` |
+| Agent governance & SSE contract tests | blocking | `mvn -f src/tjxt/tj-aigc/pom.xml verify` |
+| Core coverage gate (JaCoCo ≥ 90%) | blocking | `mvn -f src/tjxt/tj-aigc/pom.xml verify` (jacoco:check) |
+| One-click acceptance | blocking job | `bash scripts/acceptance.sh` |
+| Helm lint + template | blocking job | `helm lint helm/tianji-ai-agent` |
+| Ruff / Gitleaks / Checkstyle / SpotBugs | blocking | CI `python-quality`, `secret-scan`, `java-quality` |
+| OWASP + Trivy vulnerability scan | advisory | CI `advisory-owasp-scan`, `advisory-image-scan` |
+| Container publish (immutable sha tag + digest + SBOM + provenance) | on main push | `gh run list --workflow=Publish%20GHCR%20Image` |
+
+## 关键行为契约
+
+- **Agent-layer idempotency:** duplicate suppression scoped to `actionType:userId:actionId` via
+  `IdempotencyStore` — in-memory by default, Redis `SET NX EX` when
+  `tj.ai.harness.idempotency.store=redis`. The business transaction service remains the
+  source of truth; ordering/payment semantics are not replaced by this layer.
+- **Human handoff:** `HUMAN_HANDOFF` produces a real `HandoffRequest` (ticket id, status
+  lifecycle, redacted summary) that rides the `ROUTE` event and is shown as a
+  "已转人工 · HF-…" badge. External contact-center / ticketing integration is
+  adapter-ready and NOT included.
+- **Fault matrix:** every downstream failure class is deterministic and reproducible via
+  the `fault-injection` profile — see [docs/failure-matrix.md](docs/failure-matrix.md).
 
 ## Demo 闭环
 
@@ -212,6 +239,8 @@ sequenceDiagram
 | `AgentHarnessService` | 治理 `AgentAction`，串联 policy、runtime、observation |
 | `CourseTools` | 保持 Spring AI Tool 入口，内部提交 `course.query` 动作 |
 | `OrderTools` | 保持 Spring AI Tool 入口，内部提交 `order.preview` 动作 |
+| `IdempotencyStore` | Agent 动作去重（InMemory / Redis 两种实现），同一个 order.preview 只执行一次 |
+| `HandoffService` | 转人工契约：工单号、状态生命周期、脱敏摘要（外部客服系统未接入） |
 | `RedisChatMemory` | 会话记忆读写，支撑历史上下文 |
 | `InMemoryAttachmentService` | dev/demo 可用的附件解析、切片、引用来源服务 |
 
@@ -358,7 +387,9 @@ helm install tianji-ai-agent helm/tianji-ai-agent/ \
   --set env.SPRING_PROFILES_ACTIVE=local
 ```
 
-Chart 包含 Deployment、Service 和 liveness/readiness 探针配置。
+Chart 包含 Deployment、Service、liveness/readiness 探针、`runAsNonRoot` securityContext
+（uid 10001）与 `revisionHistoryLimit`。生产发布应固定不可变镜像 tag（`sha-<git-sha>`，
+由 `publish-image.yml` 输出；每次发布同时附 SBOM 与 provenance），而不是 `latest`。
 
 ### Docker Compose
 

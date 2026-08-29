@@ -103,3 +103,56 @@ services:
 - Open the latest GitHub Actions run and confirm the CI workflow is green.
 - *(Cross-repo)* With KnowledgeOps running, verify `KnowledgeAgent` reaches it via `KnowledgeOpsClient`.
 - *(Cross-repo)* With KnowledgeOps stopped, verify `KnowledgeAgent` falls back to local Advisor.
+
+## Interview Q&A Pack
+
+Quick evidence links for the questions interviewers actually ask.
+
+### Q: 为什么这不是普通 Spring AI Demo？
+
+`AgentHarnessService` + `ActionPolicyGuard` + `RouteSafetyPolicy` are a **deterministic**
+governance layer sitting between the model and the tools; the model merely proposes
+actions. Evidence: [agent-harness.md](../agent-harness.md),
+[agent-governance.md](../security/agent-governance.md),
+[route evaluation](../evaluation/multi-agent-eval-checklist.md),
+`ActionPolicyGuardTest` / `AgentHarnessServiceTest`.
+
+### Q: 模型想直接支付怎么办？
+
+`order.pay` / `payment.execute` / `forcePurchase` are denied by policy before touching any
+runtime; `order.preview` is the only allowed buy-side action and requires an authenticated
+user. Evidence: `ActionPolicyGuardTest.shouldBlockPaymentAndAutoConfirmationActions`,
+buy state machine in [README](../../README.md) 后端核心表.
+
+### Q: 同一个 tool 被调用两次怎么办？
+
+`IdempotencyStore` (Redis `SET NX EX` in production, in-memory for tests) guarantees at
+most one executor per `actionType:userId:actionId`; duplicates get the cached result or a
+deterministic in-flight hint, and a failed action can retry. Evidence:
+`IdempotencyStoreTest`, `RedisIdempotencyStoreTest`,
+`AgentHarnessServiceTest.shouldExecuteConcurrentPreviewOnlyOnce`.
+
+### Q: 下游挂了怎么办？
+
+Every failure class is mapped in [failure-matrix.md](../failure-matrix.md) and reproducible
+via the `fault-injection` profile (course/order/RAG timeout, HTTP 500, malformed response,
+slow response). Runtime failures become FAILED Observations + sanitized TRACE + STOP.
+
+### Q: SSE 会不会卡死？
+
+`SseEventContract` guarantees exactly one STOP and drops events after the terminal one;
+the browser treats a stream without STOP as a failure (no infinite loading). The event
+buffer is bounded (`tj.ai.streaming.buffer-size`), and the race conditions are covered by
+`SseEventContractTest`. Load profile: [performance](../../performance/README.md).
+
+### Q: 你怎么证明升级没有回归？
+
+Blocking gates in CI: offline route evaluator (160 cases, ≥98%, 0 unsafe), Java governance +
+SSE tests, JaCoCo core coverage ≥ 90%, acceptance suite, Ruff/Gitleaks/Checkstyle/SpotBugs.
+Dependency upgrade decision record: [dependency-baseline.md](../dependency-baseline.md).
+
+### Q: 怎么发布？
+
+`publish-image.yml` builds an immutable `sha-<git-sha>` GHCR tag with OCI labels, SBOM,
+provenance and prints the digest into the workflow summary; the Helm chart lints and
+renders in blocking CI, and deploys with non-root securityContext.

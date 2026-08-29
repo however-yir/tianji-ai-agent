@@ -1,5 +1,35 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `IdempotencyStore` abstraction with in-memory (default) and Redis (`SET NX EX`) production
+  implementations; agent-layer duplicate suppression for `order.preview`, fail-closed when the
+  store is unavailable.
+- Human-handoff contract: `HandoffRequest` with ticket id, status lifecycle (REQUESTED /
+  ACKNOWLEDGED / RESOLVED), redacted summary, `ROUTE` event enrichment, front-end
+  "已转人工 + handoffId" badge. External contact-center integration is adapter-ready, not included.
+- Deterministic fault-injection profile (`fault-injection`) with course/order/RAG timeout,
+  HTTP 500, malformed-response and slow-response scenarios, plus
+  [docs/failure-matrix.md](docs/failure-matrix.md).
+- Hermetic SSE load-test profile (`performance/sse_load_test.py`) and concurrency/race tests
+  proving STOP is emitted exactly once and no data follows the terminal event.
+- Bounded SSE backpressure buffer (`tj.ai.streaming.buffer-size`, default 256).
+- Helm lint + template blocking job, container publish now emits SBOM, provenance and the
+  immutably-tagged digest into the workflow summary.
+- SSE envelope `version` field (default `1`); dependency baseline decision record
+  ([docs/dependency-baseline.md](docs/dependency-baseline.md)).
+
+### Changed
+
+- Spring AI upgraded 1.0.0-M6 -> **1.0.9 GA**; DashScope now uses the OpenAI-compatible
+  endpoint via `spring-ai-starter-model-openai` (Spring AI Alibaba starter has no stable
+  release). Minor Java API migrations: `RetrievalAugmentationAdvisor`, builder-only
+  `MessageChatMemoryAdvisor`, `ChatMemory.get(String)`, `Media` package move, and removal
+  of the project-local ChatClient autoconfiguration fork.
+- Load test is manual/scheduled only; blocking CI keeps deterministic contract gates.
+
 ## v0.1.0-business-agent-showcase - 2026-04-29
 
 这是 `tianji-ai-agent` 从“AI 能力学习合集”重塑为“课程业务 Agent 工程案例”的展示版。
