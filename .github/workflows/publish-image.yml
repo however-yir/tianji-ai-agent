@@ -41,6 +41,7 @@ jobs:
             type=sha,prefix=
 
       - name: Build and Push Docker Image
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -53,3 +54,16 @@ jobs:
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
           build-args: |
             MVN_PROFILES=dev-demo
+          sbom: true
+          provenance: true
+
+      - name: Record image digest
+        if: always()
+        run: |
+          set -euo pipefail
+          {
+            echo "### Container image"
+            echo "| Digest | Tags |"
+            echo "| --- | --- |"
+            echo "| \`${{ steps.build.outputs.digest }}\` | \`${{ steps.meta.outputs.tags }}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"

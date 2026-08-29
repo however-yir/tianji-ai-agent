@@ -6,6 +6,7 @@ metadata:
     app: {{ .Release.Name }}-aigc
 spec:
   replicas: {{ .Values.replicaCount }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit | default 3 }}
   selector:
     matchLabels:
       app: {{ .Release.Name }}-aigc
@@ -43,4 +44,8 @@ spec:
           {{- if .Values.readinessProbe }}
           readinessProbe:
             {{- toYaml .Values.readinessProbe | nindent 12 }}
+          {{- end }}
+          {{- if .Values.securityContext }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
           {{- end }}

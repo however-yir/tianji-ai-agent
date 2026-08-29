@@ -15,10 +15,16 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-chi-sim \
     && rm -rf /var/lib/apt/lists/* \
     && ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime \
-    && echo ${TZ} > /etc/timezone
+    && echo ${TZ} > /etc/timezone \
+    && useradd --system --uid 10001 --create-home tianji
 
 COPY --from=builder /build/tj-aigc/target/tj-aigc.jar /app/app.jar
 
+USER tianji
+
 EXPOSE 8094
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
+    CMD wget -qO- http://127.0.0.1:8094/actuator/health >/dev/null || exit 1
 
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar --spring.profiles.active=${SPRING_PROFILES_ACTIVE:-dev-demo}"]

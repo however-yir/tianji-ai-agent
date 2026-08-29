@@ -134,7 +134,7 @@ jobs:
           set -euo pipefail
           python -m pip install --upgrade pip
           python -m pip install ruff==0.16.5
-          ruff check tests scripts
+          ruff check tests scripts performance
 
       - name: Compile Python files
         run: |
@@ -177,6 +177,24 @@ jobs:
 
       - name: SpotBugs
         run: mvn -B -ntp -f src/tjxt/tj-aigc/pom.xml spotbugs:check
+
+  helm-chart:
+    name: Helm Lint & Template
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'v4.2.0'
+
+      - name: Helm lint
+        run: helm lint helm/tianji-ai-agent
+
+      - name: Helm template (dev render)
+        run: helm template tianji-prod helm/tianji-ai-agent >/tmp/tianji-rendered.yaml
 
   advisory-owasp-scan:
     name: Advisory OWASP Dependency Check

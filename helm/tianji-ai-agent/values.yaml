@@ -4,6 +4,13 @@ image:
   repository: tianji/tj-aigc
   tag: latest
   pullPolicy: IfNotPresent
+  # Production rollouts should pin an immutable ghcr.io tag (sha-<git-sha>) instead of `latest`.
+  # See .github/workflows/publish-image.yml for the immutable revision tag.
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  allowPrivilegeEscalation: false
+revisionHistoryLimit: 3
 
 service:
   type: ClusterIP
