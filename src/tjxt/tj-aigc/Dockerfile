@@ -2,7 +2,10 @@ FROM maven:3.9.9-eclipse-temurin-17 AS builder
 
 WORKDIR /build
 COPY src/tjxt /build
-RUN mvn -B -ntp -pl tj-aigc -am -DskipTests package
+RUN for attempt in 1 2 3; do \
+    mvn -B -ntp -pl tj-aigc -am -DskipTests package && break; \
+    echo "maven build attempt $attempt failed (registry 429/network); retrying" && sleep 5; \
+    done
 
 FROM eclipse-temurin:17-jre-jammy
 
