@@ -8,6 +8,7 @@ import com.tianji.aigc.enums.AgentTypeEnum;
 import com.tianji.aigc.enums.ChatEventTypeEnum;
 import com.tianji.aigc.handoff.HandoffRequest;
 import com.tianji.aigc.handoff.HandoffService;
+import com.tianji.aigc.run.RunRecorder;
 import com.tianji.aigc.observability.AgentMetrics;
 import com.tianji.aigc.route.RouteSafetyPolicy;
 import com.tianji.aigc.service.ChatService;
@@ -39,6 +40,7 @@ public class AgentServiceImpl implements ChatService {
     private final Map<AgentTypeEnum, Agent> agentRegistry;
     private final AgentMetrics agentMetrics;
     private final HandoffService handoffService;
+    private final RunRecorder runRecorder;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private static final List<String> DEFAULT_CANDIDATE_AGENTS = List.of(
             AgentTypeEnum.RECOMMEND.getAgentName(),
@@ -54,7 +56,9 @@ public class AgentServiceImpl implements ChatService {
     public AgentServiceImpl(ChatClient openAiChatClient,
                             SystemPromptConfig systemPromptConfig,
                             List<Agent> agents) {
-        this(openAiChatClient, systemPromptConfig, agents, AgentMetrics.noop(), new HandoffService());
+        this(openAiChatClient, systemPromptConfig, agents, AgentMetrics.noop(), new HandoffService(),
+                new RunRecorder(new com.tianji.aigc.run.InMemoryAgentRunRepository(),
+                        new com.tianji.aigc.run.CostEstimator(new com.tianji.aigc.run.ModelPricingProperties())));
     }
 
     @Autowired
@@ -62,7 +66,9 @@ public class AgentServiceImpl implements ChatService {
                             SystemPromptConfig systemPromptConfig,
                             List<Agent> agents,
                             AgentMetrics agentMetrics) {
-        this(openAiChatClient, systemPromptConfig, agents, agentMetrics, new HandoffService());
+        this(openAiChatClient, systemPromptConfig, agents, agentMetrics, new HandoffService(),
+                new RunRecorder(new com.tianji.aigc.run.InMemoryAgentRunRepository(),
+                        new com.tianji.aigc.run.CostEstimator(new com.tianji.aigc.run.ModelPricingProperties())));
     }
 
     @Autowired
@@ -70,11 +76,13 @@ public class AgentServiceImpl implements ChatService {
                             SystemPromptConfig systemPromptConfig,
                             List<Agent> agents,
                             AgentMetrics agentMetrics,
-                            HandoffService handoffService) {
+                            HandoffService handoffService,
+                            RunRecorder runRecorder) {
         this.openAiChatClient = openAiChatClient;
         this.systemPromptConfig = systemPromptConfig;
         this.agentMetrics = agentMetrics;
         this.handoffService = handoffService;
+        this.runRecorder = runRecorder;
         this.agentRegistry = agents.stream()
                 .collect(Collectors.toUnmodifiableMap(Agent::getAgentType, Function.identity()));
     }
@@ -114,6 +122,8 @@ public class AgentServiceImpl implements ChatService {
 
         // Step 3: Emit ROUTE event (handoff routes carry a ticket id so the user and
         // the audit trail can reference the escalation deterministically)
+        String runId = runRecorder.begin(sessionId);
+        route = withRunId(route, runId);
         RouteResult routeForEvent = enrichRouteWithHandoff(route, agentTypeEnum, sessionId, question);
         ChatEventVO routeEvent = ChatEventVO.builder()
                 .eventType(ChatEventTypeEnum.ROUTE.getValue())
@@ -139,6 +149,15 @@ public class AgentServiceImpl implements ChatService {
                     sessionId, agentTypeEnum, streamFailure);
             return completeSseStream(routeEvent, Flux.error(streamFailure), sessionId);
         }
+    }
+
+    private RouteResult withRunId(RouteResult route, String runId) {
+        if (runId == null || route.runId() != null) {
+            return route;
+        }
+        return new RouteResult(route.intent(), route.confidence(), route.reason(), route.routeReason(),
+                route.nextAgent(), route.needRag(), route.needMemory(), route.riskLevel(),
+                route.candidateAgents(), route.handoffId(), route.handoffSummary(), runId);
     }
 
     private RouteResult enrichRouteWithHandoff(RouteResult route, AgentTypeEnum agentTypeEnum,
@@ -322,12 +341,20 @@ public class AgentServiceImpl implements ChatService {
     public record RouteResult(String intent, double confidence, String reason, String routeReason,
                                String nextAgent, boolean needRag,
                                boolean needMemory, String riskLevel, List<String> candidateAgents,
-                               String handoffId, String handoffSummary) {
+                               String handoffId, String handoffSummary, String runId) {
         public RouteResult(String intent, double confidence, String reason, String routeReason,
                            String nextAgent, boolean needRag,
                            boolean needMemory, String riskLevel, List<String> candidateAgents) {
             this(intent, confidence, reason, routeReason, nextAgent, needRag, needMemory, riskLevel,
-                    candidateAgents, null, null);
+                    candidateAgents, null, null, null);
+        }
+
+        public RouteResult(String intent, double confidence, String reason, String routeReason,
+                           String nextAgent, boolean needRag,
+                           boolean needMemory, String riskLevel, List<String> candidateAgents,
+                           String handoffId, String handoffSummary) {
+            this(intent, confidence, reason, routeReason, nextAgent, needRag, needMemory, riskLevel,
+                    candidateAgents, handoffId, handoffSummary, null);
         }
     }
 }

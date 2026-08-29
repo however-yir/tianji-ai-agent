@@ -48,4 +48,10 @@ public class DevDemoChatSessionService extends ServiceImpl<ChatSessionMapper, Ch
     public Map<String, List<ChatSessionVO>> queryHistorySession() {
         return devDemoSessionStore.queryHistorySession();
     }
+
+    @Override
+    public void deleteSession(String sessionId) {
+        // dev-demo: no persisted session rows to remove; chat memory for the demo
+        // profile is an in-memory list owned by DevDemoChatService.
+    }
 }

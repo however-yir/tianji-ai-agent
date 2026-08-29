@@ -107,6 +107,14 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
                 .toList();
     }
 
+    @Override
+    public void deleteSession(String sessionId) {
+        super.lambdaUpdate()
+                .eq(ChatSession::getSessionId, sessionId)
+                .remove();
+        this.chatMemory.clear(ChatService.getConversationId(sessionId));
+    }
+
     @Async
     @Override
     public void update(String sessionId, String title, Long userId) {

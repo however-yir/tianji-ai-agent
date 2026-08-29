@@ -14,19 +14,20 @@ public class RedisChatMemory implements ChatMemory {
 
     // 默认redis中key的前缀
     public static final String DEFAULT_PREFIX = "CHAT:";
-    // 会话记忆 TTL：滚动续期，避免废弃会话的记忆列表在 Redis 中无界增长
-    private static final Duration MEMORY_TTL = Duration.ofDays(30);
 
     private final StringRedisTemplate stringRedisTemplate;
     private final String prefix;
+    private final MemoryGovernanceProperties properties;
 
     public RedisChatMemory(StringRedisTemplate stringRedisTemplate) {
-        this(stringRedisTemplate, DEFAULT_PREFIX);
+        this(stringRedisTemplate, DEFAULT_PREFIX, new MemoryGovernanceProperties());
     }
 
-    public RedisChatMemory(StringRedisTemplate stringRedisTemplate, String prefix) {
+    public RedisChatMemory(StringRedisTemplate stringRedisTemplate, String prefix,
+                           MemoryGovernanceProperties properties) {
         this.stringRedisTemplate = stringRedisTemplate;
         this.prefix = prefix;
+        this.properties = properties == null ? new MemoryGovernanceProperties() : properties;
     }
 
     @Override
@@ -36,10 +37,13 @@ public class RedisChatMemory implements ChatMemory {
         }
         String key = this.getKey(conversationId);
         var listOperations = this.stringRedisTemplate.boundListOps(key);
-        // 将消息序列化后写入redis中
-        messages.forEach(message -> listOperations.rightPush(MessageUtil.toJson(message)));
+        // 将消息序列化并经脱敏后写入redis中
+        messages.forEach(message -> listOperations.rightPush(
+                com.tianji.aigc.handoff.HandoffRedaction.redact(MessageUtil.toJson(message))));
+        // 有界历史：只保留最近 maxTurns 轮（一条消息一个元素，轮数取 2 倍元素估计）
+        listOperations.trim(-properties.getMaxTurns() * 2L, -1);
         // 写入后滚动续期 TTL
-        this.stringRedisTemplate.expire(key, MEMORY_TTL);
+        this.stringRedisTemplate.expire(key, Duration.ofDays(properties.getTtlDays()));
     }
 
     private String getKey(String conversationId) {

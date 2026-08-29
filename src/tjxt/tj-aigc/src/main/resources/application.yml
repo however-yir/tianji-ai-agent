@@ -40,6 +40,47 @@ spring:
               - java.io.IOException
               - java.util.concurrent.TimeoutException
               - org.springframework.web.client.ResourceAccessException
+tj:
+  ai:
+    execution-budget:
+      max-model-calls: 4
+      max-tool-calls: 8
+      max-same-action: 2
+      loop-window: 6
+      max-runtime-seconds: 120
+      max-tool-millis: 15000
+      max-output-tokens: 0
+      max-estimated-cost: 0
+    model-profiles:
+      agent-mapping:
+        ROUTE: router
+        KNOWLEDGE: knowledge
+        STUDY_PLAN: knowledge
+      profiles:
+        router:
+          provider: openai
+          model: qwen-turbo
+          temperature: 0.1
+          max-tokens: 512
+          timeout-seconds: 20
+        general:
+          provider: openai
+          model: qwen-plus
+          temperature: 0.7
+          max-tokens: 0
+          timeout-seconds: 30
+        knowledge:
+          provider: openai
+          model: qwen-max
+          temperature: 0.3
+          max-tokens: 2048
+          timeout-seconds: 45
+    model-pricing:
+      providers: {}
+    memory:
+      max-turns: 20
+      ttl-days: 30
+
 management:
   endpoints:
     web:

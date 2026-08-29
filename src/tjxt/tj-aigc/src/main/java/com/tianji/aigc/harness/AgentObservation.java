@@ -18,12 +18,19 @@ public record AgentObservation(String observationId,
                                String resultField,
                                Object result,
                                String errorMessage,
+                               String reasonCode,
                                long latencyMillis,
                                Instant observedAt) {
 
     public static AgentObservation of(AgentAction action, ActionPolicyDecision decision,
                                       boolean success, String resultField, Object result,
                                       String errorMessage, long latencyMillis) {
+        return ofWithCode(action, decision, success, resultField, result, errorMessage, latencyMillis, null);
+    }
+
+    public static AgentObservation ofWithCode(AgentAction action, ActionPolicyDecision decision,
+                                              boolean success, String resultField, Object result,
+                                              String errorMessage, long latencyMillis, String reasonCode) {
         return new AgentObservation(
                 UUID.randomUUID().toString(),
                 action.requestId(),
@@ -38,6 +45,7 @@ public record AgentObservation(String observationId,
                 resultField,
                 result,
                 errorMessage,
+                reasonCode,
                 latencyMillis,
                 Instant.now()
         );
@@ -76,6 +84,9 @@ public record AgentObservation(String observationId,
         trace.put("errorMessage", errorMessage);
         trace.put("latencyMillis", latencyMillis);
         trace.put("observedAt", observedAt.toString());
+        if (reasonCode != null) {
+            trace.put("reasonCode", reasonCode);
+        }
         return trace;
     }
 }

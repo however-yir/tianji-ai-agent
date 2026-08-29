@@ -20,27 +20,29 @@ import java.util.concurrent.atomic.AtomicReference;
 @RequiredArgsConstructor
 public class SystemPromptConfig {
 
-    /**
-     * Nacos 配置缺失/不可用时的兜底提示词，避免 systemMessage() 返回 null 导致请求链路 NPE。
-     */
-    private static final String DEFAULT_SYSTEM_PROMPT =
-            "你是天机学堂的AI学习助手，请用中文、友好且专业地回答用户的问题；无法确定的内容请如实说明。";
-
     private final NacosConfigManager nacosConfigManager;
     private final AIProperties aiProperties;
+    private final com.tianji.aigc.prompt.PromptRegistry promptRegistry;
 
     // 使用原子引用，保证线程安全；初始值为兜底提示词，仅在成功读取配置后覆盖
-    private final AtomicReference<String> chatSystemMessage = new AtomicReference<>(DEFAULT_SYSTEM_PROMPT);
-    private final AtomicReference<String> routeAgentSystemMessage = new AtomicReference<>(DEFAULT_SYSTEM_PROMPT);
-    private final AtomicReference<String> recommendAgentSystemMessage = new AtomicReference<>(DEFAULT_SYSTEM_PROMPT);
-    private final AtomicReference<String> buyAgentSystemMessage = new AtomicReference<>(DEFAULT_SYSTEM_PROMPT);
-    private final AtomicReference<String> consultAgentSystemMessage = new AtomicReference<>(DEFAULT_SYSTEM_PROMPT);
-    private final AtomicReference<String> knowledgeAgentSystemMessage = new AtomicReference<>(DEFAULT_SYSTEM_PROMPT);
-    private final AtomicReference<String> textSystemMessage = new AtomicReference<>(DEFAULT_SYSTEM_PROMPT);
+    private final AtomicReference<String> chatSystemMessage = new AtomicReference<>("");
+    private final AtomicReference<String> routeAgentSystemMessage = new AtomicReference<>("");
+    private final AtomicReference<String> recommendAgentSystemMessage = new AtomicReference<>("");
+    private final AtomicReference<String> buyAgentSystemMessage = new AtomicReference<>("");
+    private final AtomicReference<String> consultAgentSystemMessage = new AtomicReference<>("");
+    private final AtomicReference<String> knowledgeAgentSystemMessage = new AtomicReference<>("");
+    private final AtomicReference<String> textSystemMessage = new AtomicReference<>("");
 
     @PostConstruct // 初始化时加载配置
     public void init() {
-        // 读取配置文件
+        // Repository prompts are the versioned baseline; Nacos is a controlled override.
+        chatSystemMessage.set(promptRegistry.active("chat").orElseThrow().content());
+        routeAgentSystemMessage.set(promptRegistry.active("route").orElseThrow().content());
+        recommendAgentSystemMessage.set(promptRegistry.active("recommend").orElseThrow().content());
+        buyAgentSystemMessage.set(promptRegistry.active("buy").orElseThrow().content());
+        consultAgentSystemMessage.set(promptRegistry.active("consult").orElseThrow().content());
+        knowledgeAgentSystemMessage.set(promptRegistry.active("knowledge").orElseThrow().content());
+        textSystemMessage.set(promptRegistry.active("text").orElseThrow().content());
         loadConfig(aiProperties.getSystem().getChat(), chatSystemMessage);
         loadConfig(aiProperties.getSystem().getRouteAgent(), routeAgentSystemMessage);
         loadConfig(aiProperties.getSystem().getRecommendAgent(), recommendAgentSystemMessage);

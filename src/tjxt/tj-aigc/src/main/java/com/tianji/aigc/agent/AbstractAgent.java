@@ -4,7 +4,14 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.IdUtil;
 import com.tianji.aigc.attachment.AttachmentContext;
 import com.tianji.aigc.attachment.AttachmentContextHolder;
+import com.tianji.aigc.budget.BudgetDecision;
+import com.tianji.aigc.budget.BudgetState;
+import com.tianji.aigc.budget.ExecutionBudgetService;
 import com.tianji.aigc.config.ModelOptionsHolder;
+import com.tianji.aigc.config.ModelProfileProperties;
+import com.tianji.aigc.config.ModelProfileRegistry;
+import com.tianji.aigc.prompt.PromptRegistry;
+import com.tianji.aigc.run.RunRecorder;
 import com.tianji.aigc.config.StreamingProperties;
 import com.tianji.aigc.config.ModelOptionsHolder.ModelOptions;
 import com.tianji.aigc.config.ToolResultHolder;
@@ -50,6 +57,14 @@ public abstract class AbstractAgent implements Agent {
     private Advisor messageChatMemoryAdvisor;
     @Resource
     private StreamingProperties streamingProperties;
+    @Resource
+    private ExecutionBudgetService executionBudgetService;
+    @Resource
+    private RunRecorder runRecorder;
+    @Resource
+    private PromptRegistry promptRegistry;
+    @Resource
+    private ModelProfileRegistry modelProfileRegistry;
 
     // 输出结束的标记
     public static final ChatEventVO STOP_EVENT = ChatEventVO.builder().eventType(ChatEventTypeEnum.STOP.getValue()).build();
@@ -63,6 +78,12 @@ public abstract class AbstractAgent implements Agent {
         // 获取用户id
         var userId = UserContext.getUser();
         var requestId = this.generateRequestId();
+        if (executionBudgetService != null) {
+            executionBudgetService.start(requestId);
+        }
+        if (runRecorder != null && promptRegistry != null) {
+            runRecorder.attachPrompt(sessionId, promptRegistry.trace(promptId(), this.systemMessage()));
+        }
         this.registerAttachmentParams(sessionId, requestId);
 
         //更新会话时间
@@ -83,6 +104,12 @@ public abstract class AbstractAgent implements Agent {
         // 获取用户id
         var userId = UserContext.getUser();
         var requestId = this.generateRequestId();
+        if (executionBudgetService != null) {
+            executionBudgetService.start(requestId);
+        }
+        if (runRecorder != null && promptRegistry != null) {
+            runRecorder.attachPrompt(sessionId, promptRegistry.trace(promptId(), this.systemMessage()));
+        }
         // 大模型输出内容的缓存器，用于在输出中断后的数据存储
         StringBuilder outputBuilder = new StringBuilder();
         this.registerAttachmentParams(sessionId, requestId);
@@ -123,6 +150,7 @@ public abstract class AbstractAgent implements Agent {
                 }
                 sink.tryEmitNext(STOP_EVENT);
                 sink.tryEmitComplete();
+                finishRun(requestId, sessionId, outputBuilder.length() == 0 ? "FAILURE" : "SUCCESS");
             }
             finally {
                 if (this.useAttachmentContext()) {
@@ -130,6 +158,29 @@ public abstract class AbstractAgent implements Agent {
                 }
             }
         };
+
+        if (executionBudgetService != null) {
+            BudgetDecision modelDecision = executionBudgetService.current(requestId)
+                    .map(BudgetState::beforeModelCall)
+                    .orElse(BudgetDecision.ok());
+            if (!modelDecision.allowed()) {
+                log.warn("[Agent] 模型调用超出预算, sessionId={}, requestId={}, reason={}",
+                        sessionId, requestId, modelDecision.reasonCode());
+                sink.tryEmitNext(ChatEventVO.builder()
+                        .eventType(ChatEventTypeEnum.TRACE.getValue())
+                        .eventData(java.util.Map.of(
+                                "sessionId", sessionId,
+                                "actionType", "agent.model",
+                                "status", "FAILURE",
+                                "policyDecision", "NOT_APPLICABLE",
+                                "errorReason", modelDecision.message(),
+                                "reasonCode", modelDecision.reasonCode().name()))
+                        .build());
+                sink.tryEmitNext(STOP_EVENT);
+                sink.tryEmitComplete();
+                return sink.asFlux();
+            }
+        }
 
         this.getChatClientRequest(sessionId, requestId, question)
                 .stream()
@@ -155,6 +206,7 @@ public abstract class AbstractAgent implements Agent {
                 })
                 .takeWhile(s -> Optional.ofNullable(GENERATE_STATUS.get(sessionId)).orElse(false))
                 .map(chatResponse -> {
+                    captureTokenUsage(chatResponse, requestId);
                     String text = chatResponse.getResult().getOutput().getText();
                     outputBuilder.append(text);
                     return ChatEventVO.builder()
@@ -220,7 +272,7 @@ public abstract class AbstractAgent implements Agent {
                 .toolContext(this.toolContext(sessionId, requestId))
                 .user(question);
 
-        applyChatOptions(request);
+        applyChatOptions(request, sessionId);
         return request;
     }
 
@@ -239,18 +291,47 @@ public abstract class AbstractAgent implements Agent {
     /**
      * 从 ModelOptionsHolder 读取 model 和 temperature，构建对应的 ChatOptions 并应用到请求。
      */
-    private void applyChatOptions(ChatClient.ChatClientRequestSpec request) {
+    private void applyChatOptions(ChatClient.ChatClientRequestSpec request, String sessionId) {
         ModelOptions options = ModelOptionsHolder.get();
-        if (options == null) return;
+        ModelProfileProperties.Profile profile = modelProfileRegistry == null
+                ? null : modelProfileRegistry.resolve(getAgentType()).orElse(null);
 
-        String provider = options.hasProvider() ? options.provider() : "dashscope";
-
-        // Both providers (OpenAI and DashScope via its compatible endpoint) share the
-        // OpenAiChatOptions; the provider name above is a UI-facing brand label.
+        // Request-level user selection (provider/model/temperature) wins; otherwise the
+        // deterministic model profile for this agent type applies.
         OpenAiChatOptions oaiOptions = new OpenAiChatOptions();
-        if (options.hasModel()) oaiOptions.setModel(options.model());
-        if (options.hasTemperature()) oaiOptions.setTemperature(options.temperature());
+        String provider;
+        String model;
+        if (options != null && (options.hasProvider() || options.hasModel())) {
+            provider = options.hasProvider() ? options.provider()
+                    : (profile != null ? profile.getProvider() : "openai");
+            model = options.hasModel() ? options.model()
+                    : (profile != null ? profile.getModel() : "qwen-plus");
+            oaiOptions.setModel(model);
+            if (options.hasTemperature()) {
+                oaiOptions.setTemperature(options.temperature());
+            }
+        }
+        else if (profile != null) {
+            provider = profile.getProvider();
+            model = profile.getModel();
+            oaiOptions.setModel(model);
+            if (profile.getTemperature() != null) {
+                oaiOptions.setTemperature(profile.getTemperature());
+            }
+            if (profile.getMaxTokens() > 0) {
+                oaiOptions.setMaxTokens(profile.getMaxTokens());
+            }
+        }
+        else {
+            provider = "openai";
+            model = "qwen-plus";
+            oaiOptions.setModel(model);
+        }
         request.options(oaiOptions);
+        if (runRecorder != null) {
+            runRecorder.attachModel(sessionId, ModelProfileRegistry.defaultProfileKey(getAgentType()),
+                    provider, model);
+        }
     }
 
     protected boolean useAttachmentContext() {
@@ -265,6 +346,31 @@ public abstract class AbstractAgent implements Agent {
         if (context != null && context.hasSources()) {
             ToolResultHolder.putAll(requestId, context.toParamMap());
         }
+    }
+
+    private void finishRun(String requestId, String sessionId, String terminalStatus) {
+        if (runRecorder == null) {
+            return;
+        }
+        com.tianji.aigc.budget.BudgetState budget = executionBudgetService == null
+                ? null : executionBudgetService.current(requestId).orElse(null);
+        boolean handoff = getAgentType() == com.tianji.aigc.enums.AgentTypeEnum.HUMAN_HANDOFF;
+        runRecorder.finish(sessionId, terminalStatus, budget, handoff);
+    }
+
+    private String promptId() {
+        return getAgentType().name().toLowerCase().replace('_', '-');
+    }
+
+    private void captureTokenUsage(org.springframework.ai.chat.model.ChatResponse response, String requestId) {
+        if (executionBudgetService == null || response.getMetadata() == null
+                || response.getMetadata().getUsage() == null) {
+            return;
+        }
+        org.springframework.ai.chat.metadata.Usage usage = response.getMetadata().getUsage();
+        int in = usage.getPromptTokens() != null ? usage.getPromptTokens() : 0;
+        int out = usage.getCompletionTokens() != null ? usage.getCompletionTokens() : 0;
+        executionBudgetService.current(requestId).ifPresent(budget -> budget.recordTokens(in, out));
     }
 
     private String resolveSystemMessage(String sessionId) {

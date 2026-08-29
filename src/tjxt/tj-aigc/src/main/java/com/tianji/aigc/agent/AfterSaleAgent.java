@@ -1,6 +1,9 @@
 package com.tianji.aigc.agent;
 
+import com.tianji.aigc.prompt.PromptRegistry;
+
 import com.tianji.aigc.enums.AgentTypeEnum;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -11,8 +14,11 @@ import org.springframework.stereotype.Component;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 @Profile("!dev-demo")
 public class AfterSaleAgent extends AbstractAgent {
+
+    private final PromptRegistry promptRegistry;
 
     @Override
     public AgentTypeEnum getAgentType() {
@@ -21,14 +27,7 @@ public class AfterSaleAgent extends AbstractAgent {
 
     @Override
     public String systemMessage() {
-        return """
-                你是一个在线教育平台的售后客服助手。
-                你负责处理用户的售后问题，包括退款查询、订单异常、课程质量反馈和售后服务咨询。
-                回答时请：
-                1. 先确认用户的订单信息
-                2. 根据问题类型给出对应的处理流程
-                3. 如果需要人工介入，建议转接人工客服
-                """;
+        return this.promptRegistry.active("after-sale").orElseThrow().content();
     }
 
     @Override

@@ -3,6 +3,7 @@ package com.tianji.aigc.agent;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.map.MapUtil;
 import com.tianji.aigc.config.SystemPromptConfig;
+import com.tianji.aigc.prompt.PromptRegistry;
 import com.tianji.aigc.constants.Constant;
 import com.tianji.aigc.enums.AgentTypeEnum;
 import com.tianji.aigc.tools.CourseTools;
@@ -28,12 +29,15 @@ import java.util.Map;
 public class ConsultAgent extends AbstractAgent {
 
     private final SystemPromptConfig systemPromptConfig;
+    private final PromptRegistry promptRegistry;
     private final VectorStore vectorStore;
     private final CourseTools courseTools;
 
     @Override
     public String systemMessage() {
-        return this.systemPromptConfig.getConsultAgentSystemMessage().get();
+        String configured = this.systemPromptConfig.getConsultAgentSystemMessage().get();
+        return configured != null && !configured.isBlank()
+                ? configured : this.promptRegistry.active("consult").orElseThrow().content();
     }
 
     @Override

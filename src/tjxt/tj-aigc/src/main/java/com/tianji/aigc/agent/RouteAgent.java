@@ -1,6 +1,7 @@
 package com.tianji.aigc.agent;
 
 import com.tianji.aigc.config.SystemPromptConfig;
+import com.tianji.aigc.prompt.PromptRegistry;
 import com.tianji.aigc.enums.AgentTypeEnum;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
@@ -20,6 +21,7 @@ public class RouteAgent extends AbstractAgent {
     }
 
     private final SystemPromptConfig systemPromptConfig;
+    private final PromptRegistry promptRegistry;
 
     @Override
     public AgentTypeEnum getAgentType() {
@@ -46,27 +48,7 @@ public class RouteAgent extends AbstractAgent {
         if (configured != null && !configured.isBlank()) {
             return configured;
         }
-        // Fallback structured routing prompt when Nacos config is unavailable
-        return """
-                You are an intent routing agent for an education customer service system.
-                Analyze the user's question and route to the most appropriate agent.
-
-                Available agents: RECOMMEND, CONSULT, BUY, KNOWLEDGE, AFTER_SALE, COMPLAINT, STUDY_PLAN, HUMAN_HANDOFF
-                Complaints, low-confidence cases, and payment-sensitive issues must prefer HUMAN_HANDOFF.
-
-                Return JSON only:
-                {
-                  "intent": "BUY",
-                  "confidence": 0.91,
-                  "reason": "brief explanation of routing decision",
-                  "routeReason": "short user-facing reason for the route event",
-                  "nextAgent": "BUY",
-                  "candidateAgents": ["BUY", "CONSULT", "HUMAN_HANDOFF"],
-                  "needRag": true,
-                  "needMemory": true,
-                  "riskLevel": "LOW"
-                }
-                """;
+        return this.promptRegistry.active("route").orElseThrow().content();
     }
 
     @Override

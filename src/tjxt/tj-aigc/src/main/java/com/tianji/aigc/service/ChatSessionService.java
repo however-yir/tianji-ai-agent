@@ -41,4 +41,10 @@ public interface ChatSessionService extends IService<ChatSession> {
      * 查询历史会话列表
      */
     Map<String, List<ChatSessionVO>> queryHistorySession();
+
+    /**
+     * Deletes a session and its stored chat memory. Run metadata is NOT deleted
+     * (retention policy governs that separately).
+     */
+    void deleteSession(String sessionId);
 }

@@ -2,6 +2,7 @@ package com.tianji.aigc.agent;
 
 import cn.hutool.core.map.MapUtil;
 import com.tianji.aigc.config.SystemPromptConfig;
+import com.tianji.aigc.prompt.PromptRegistry;
 import com.tianji.aigc.constants.Constant;
 import com.tianji.aigc.enums.AgentTypeEnum;
 import com.tianji.aigc.knowledgeops.KnowledgeOpsClient;
@@ -33,6 +34,7 @@ import java.util.Map;
 public class RecommendAgent extends AbstractAgent {
 
     private final SystemPromptConfig systemPromptConfig;
+    private final PromptRegistry promptRegistry;
     private final CourseTools courseTools;
     private final VectorStore vectorStore;
     private final KnowledgeOpsClient knowledgeOpsClient;
@@ -45,7 +47,9 @@ public class RecommendAgent extends AbstractAgent {
 
     @Override
     public String systemMessage() {
-        return this.systemPromptConfig.getRecommendAgentSystemMessage().get();
+        String configured = this.systemPromptConfig.getRecommendAgentSystemMessage().get();
+        return configured != null && !configured.isBlank()
+                ? configured : this.promptRegistry.active("recommend").orElseThrow().content();
     }
 
     @Override

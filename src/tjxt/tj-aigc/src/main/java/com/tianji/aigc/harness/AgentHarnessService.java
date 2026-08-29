@@ -1,6 +1,11 @@
 package com.tianji.aigc.harness;
 
+import com.tianji.aigc.budget.BudgetDecision;
+import com.tianji.aigc.budget.BudgetState;
+import com.tianji.aigc.budget.ExecutionBudgetProperties;
+import com.tianji.aigc.budget.ExecutionBudgetService;
 import com.tianji.aigc.observability.AgentMetrics;
+import com.tianji.aigc.run.RunRecorder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -19,23 +24,45 @@ public class AgentHarnessService {
     private final AgentMetrics agentMetrics;
     private final IdempotencyStore idempotencyStore;
     private final FaultInjector faultInjector;
+    private final ExecutionBudgetService budgetService;
+    private final RunRecorder runRecorder;
 
     @Autowired
     public AgentHarnessService(ActionPolicyGuard policyGuard, AgentRuntime agentRuntime,
                                HarnessEventRecorder eventRecorder, AgentMetrics agentMetrics,
                                IdempotencyStore idempotencyStore) {
-        this(policyGuard, agentRuntime, eventRecorder, agentMetrics, idempotencyStore, new NoopFaultInjector());
+        this(policyGuard, agentRuntime, eventRecorder, agentMetrics, idempotencyStore,
+                new NoopFaultInjector(), new ExecutionBudgetService(new ExecutionBudgetProperties()),
+                null);
     }
 
     public AgentHarnessService(ActionPolicyGuard policyGuard, AgentRuntime agentRuntime,
                                HarnessEventRecorder eventRecorder, AgentMetrics agentMetrics,
                                IdempotencyStore idempotencyStore, FaultInjector faultInjector) {
+        this(policyGuard, agentRuntime, eventRecorder, agentMetrics, idempotencyStore,
+                faultInjector, new ExecutionBudgetService(new ExecutionBudgetProperties()), null);
+    }
+
+    public AgentHarnessService(ActionPolicyGuard policyGuard, AgentRuntime agentRuntime,
+                               HarnessEventRecorder eventRecorder, AgentMetrics agentMetrics,
+                               IdempotencyStore idempotencyStore, FaultInjector faultInjector,
+                               ExecutionBudgetService budgetService) {
+        this(policyGuard, agentRuntime, eventRecorder, agentMetrics, idempotencyStore,
+                faultInjector, budgetService, null);
+    }
+
+    public AgentHarnessService(ActionPolicyGuard policyGuard, AgentRuntime agentRuntime,
+                               HarnessEventRecorder eventRecorder, AgentMetrics agentMetrics,
+                               IdempotencyStore idempotencyStore, FaultInjector faultInjector,
+                               ExecutionBudgetService budgetService, RunRecorder runRecorder) {
         this.policyGuard = policyGuard;
         this.agentRuntime = agentRuntime;
         this.eventRecorder = eventRecorder;
         this.agentMetrics = agentMetrics;
         this.idempotencyStore = idempotencyStore;
         this.faultInjector = faultInjector;
+        this.budgetService = budgetService;
+        this.runRecorder = runRecorder;
     }
 
     public AgentHarnessService(ActionPolicyGuard policyGuard, AgentRuntime agentRuntime,
@@ -52,8 +79,10 @@ public class AgentHarnessService {
         long startTime = System.currentTimeMillis();
         ActionPolicyDecision decision = policyGuard.decide(action);
         if (!decision.allowed()) {
-            AgentObservation observation = AgentObservation.of(
-                    action, decision, false, null, null, decision.reason(), elapsed(startTime));
+            budgetService.current(action.requestId()).ifPresent(BudgetState::recordPolicyDenied);
+            AgentObservation observation = AgentObservation.ofWithCode(
+                    action, decision, false, null, null, decision.reason(), elapsed(startTime),
+                    decision.reasonCode());
             record(observation);
             return observation;
         }
@@ -103,11 +132,22 @@ public class AgentHarnessService {
     private AgentObservation executeAllowedAction(AgentAction action, ActionPolicyDecision decision,
                                                    long startTime) {
         try {
+            BudgetDecision budgetDecision = checkBudget(action);
+            if (!budgetDecision.allowed()) {
+                // budget denial is a harness-level refusal: reflect it on allowed() too
+                AgentObservation observation = AgentObservation.ofWithCode(
+                        action, ActionPolicyDecision.deny(budgetDecision.message()), false,
+                        null, null, budgetDecision.message(), elapsed(startTime),
+                        budgetDecision.reasonCode().name());
+                record(observation);
+                return observation;
+            }
             faultInjector.beforeAction(action);
             Object result = agentRuntime.execute(action);
             String resultField = action.schema().map(schema -> schema.resultField(action)).orElse(null);
             AgentObservation observation = AgentObservation.of(
                     action, decision, result != null, resultField, result, null, elapsed(startTime));
+            budgetService.current(action.requestId()).ifPresent(budget -> budget.afterToolCall(elapsed(startTime)));
             record(observation);
             return observation;
         }
@@ -121,9 +161,30 @@ public class AgentHarnessService {
         }
     }
 
+    private BudgetDecision checkBudget(AgentAction action) {
+        return budgetService.current(action.requestId())
+                .map(budget -> {
+                    String signature = BudgetState.signature(action.actionType(),
+                            normalizeArguments(action.input()));
+                    BudgetDecision decision = budget.beforeAction(action.actionType(), signature);
+                    return decision.allowed() ? budget.beforeToolCall() : decision;
+                })
+                .orElse(BudgetDecision.ok());
+    }
+
+    private String normalizeArguments(java.util.Map<String, Object> input) {
+        if (input == null || input.isEmpty()) {
+            return "{}";
+        }
+        return new java.util.TreeMap<>(input).toString();
+    }
+
     private void record(AgentObservation observation) {
         eventRecorder.record(observation);
         agentMetrics.recordAction(observation);
+        if (runRecorder != null) {
+            runRecorder.recordAction(observation.sessionId(), observation);
+        }
     }
 
     private long elapsed(long startTime) {

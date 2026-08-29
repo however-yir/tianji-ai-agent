@@ -3,6 +3,7 @@ package com.tianji.aigc.agent;
 import com.tianji.aigc.config.SystemPromptConfig;
 import com.tianji.aigc.constants.Constant;
 import com.tianji.aigc.enums.AgentTypeEnum;
+import com.tianji.aigc.prompt.PromptRegistry;
 import com.tianji.aigc.knowledgeops.KnowledgeOpsClient;
 import com.tianji.aigc.knowledgeops.KnowledgeOpsProperties;
 import com.tianji.aigc.tools.CourseTools;
@@ -45,7 +46,7 @@ class AgentConfigurationTest {
     void shouldConfigureRouteAgentAsMemorylessRouter() {
         when(systemPromptConfig.getRouteAgentSystemMessage()).thenReturn(new AtomicReference<>("route prompt"));
 
-        RouteAgent routeAgent = new RouteAgent(systemPromptConfig);
+        RouteAgent routeAgent = new RouteAgent(systemPromptConfig, new PromptRegistry());
 
         assertThat(routeAgent.getAgentType()).isEqualTo(AgentTypeEnum.ROUTE);
         assertThat(routeAgent.systemMessage()).isEqualTo("route prompt");
@@ -59,7 +60,7 @@ class AgentConfigurationTest {
         when(knowledgeOpsProperties.isEnabled()).thenReturn(false);
         UserContext.setUser(10001L);
 
-        RecommendAgent recommendAgent = new RecommendAgent(systemPromptConfig, courseTools, vectorStore, knowledgeOpsClient, knowledgeOpsProperties);
+        RecommendAgent recommendAgent = new RecommendAgent(systemPromptConfig, new PromptRegistry(), courseTools, vectorStore, knowledgeOpsClient, knowledgeOpsProperties);
 
         assertThat(recommendAgent.getAgentType()).isEqualTo(AgentTypeEnum.RECOMMEND);
         assertThat(recommendAgent.systemMessage()).isEqualTo("recommend prompt");
@@ -75,7 +76,7 @@ class AgentConfigurationTest {
         when(systemPromptConfig.getConsultAgentSystemMessage()).thenReturn(new AtomicReference<>("consult prompt"));
         UserContext.setUser(10002L);
 
-        ConsultAgent consultAgent = new ConsultAgent(systemPromptConfig, vectorStore, courseTools);
+        ConsultAgent consultAgent = new ConsultAgent(systemPromptConfig, new PromptRegistry(), vectorStore, courseTools);
 
         assertThat(consultAgent.getAgentType()).isEqualTo(AgentTypeEnum.CONSULT);
         assertThat(consultAgent.systemMessage()).isEqualTo("consult prompt");
@@ -91,7 +92,7 @@ class AgentConfigurationTest {
         when(systemPromptConfig.getBuyAgentSystemMessage()).thenReturn(new AtomicReference<>("buy prompt"));
         UserContext.setUser(10003L);
 
-        BuyAgent buyAgent = new BuyAgent(systemPromptConfig, orderTools);
+        BuyAgent buyAgent = new BuyAgent(systemPromptConfig, new PromptRegistry(), orderTools);
 
         assertThat(buyAgent.getAgentType()).isEqualTo(AgentTypeEnum.BUY);
         assertThat(buyAgent.systemMessage())
@@ -114,10 +115,11 @@ class AgentConfigurationTest {
         when(systemPromptConfig.getKnowledgeAgentSystemMessage()).thenReturn(new AtomicReference<>("knowledge prompt"));
         when(knowledgeOpsProperties.isEnabled()).thenReturn(false);
 
-        KnowledgeAgent knowledgeAgent = new KnowledgeAgent(systemPromptConfig, knowledgeOpsClient, knowledgeOpsProperties, vectorStore);
+        KnowledgeAgent knowledgeAgent = new KnowledgeAgent(systemPromptConfig, new PromptRegistry(), knowledgeOpsClient, knowledgeOpsProperties, vectorStore);
 
         assertThat(knowledgeAgent.getAgentType()).isEqualTo(AgentTypeEnum.KNOWLEDGE);
-        assertThat(knowledgeAgent.systemMessage()).isEqualTo("knowledge prompt");
+        assertThat(knowledgeAgent.systemMessage()).contains("knowledge prompt");
+        // trust boundary is appended outside any override so it cannot be removed by config
         assertThat(knowledgeAgent.advisors("test question")).hasSize(1);
     }
 }

@@ -5,6 +5,7 @@ import com.tianji.aigc.vo.ChatSessionVO;
 import com.tianji.aigc.vo.MessageVO;
 import com.tianji.aigc.vo.SessionVO;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -35,6 +36,14 @@ public class SessionController {
      *
      * @return 热门会话列表
      */
+    /**
+     * 删除会话（连同 Redis 会话记忆与附件上下文）。审计用途的 Run 元数据按保留策略独立管理。
+     */
+    @DeleteMapping("/{sessionId}")
+    public void delete(@PathVariable("sessionId") String sessionId) {
+        this.chatSessionService.deleteSession(sessionId);
+    }
+
     @GetMapping("/hot")
     public List<SessionVO.Example> hotExamples(@RequestParam(value = "n", defaultValue = "3") Integer num) {
         return this.chatSessionService.hotExamples(num);
