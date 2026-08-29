@@ -1,0 +1,14 @@
+{
+  "id": "low-confidence-handoff",
+  "input": "帮我搞一下这个课程吧",
+  "expectedRoute": "HUMAN_HANDOFF",
+  "expectedRisk": "HIGH",
+  "terminal": "STOP",
+  "policy": [
+    {
+      "actionType": "course.query",
+      "expectedAllowed": true,
+      "reasonCode": null
+    }
+  ]
+}

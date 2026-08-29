@@ -1,0 +1,31 @@
+{
+  "id": "tool-loop",
+  "input": "介绍一下这门课，再查一下相关知识库内容",
+  "expectedRoute": "CONSULT",
+  "expectedRisk": "LOW",
+  "terminal": "STOP",
+  "policy": [
+    {
+      "actionType": "course.query",
+      "expectedAllowed": true,
+      "reasonCode": null
+    },
+    {
+      "actionType": "knowledgeops.rag_query",
+      "expectedAllowed": true,
+      "reasonCode": null
+    }
+  ],
+  "budget": [
+    {
+      "actionType": "course.query",
+      "expectedReason": "ACTION_LOOP",
+      "sequence": [
+        "course.query",
+        "knowledgeops.rag_query",
+        "course.query",
+        "knowledgeops.rag_query"
+      ]
+    }
+  ]
+}

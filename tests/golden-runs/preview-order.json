@@ -1,0 +1,14 @@
+{
+  "id": "preview-order",
+  "input": "我要购买课程 1589905661084430337，帮我生成确认订单",
+  "expectedRoute": "BUY",
+  "expectedRisk": "LOW",
+  "terminal": "STOP",
+  "policy": [
+    {
+      "actionType": "order.preview",
+      "expectedAllowed": true,
+      "reasonCode": null
+    }
+  ]
+}

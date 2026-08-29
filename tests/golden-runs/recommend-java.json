@@ -1,0 +1,14 @@
+{
+  "id": "recommend-java",
+  "input": "我零基础，适合入门 Java 后端，帮我推荐课程",
+  "expectedRoute": "RECOMMEND",
+  "expectedRisk": "LOW",
+  "terminal": "STOP",
+  "policy": [
+    {
+      "actionType": "course.query",
+      "expectedAllowed": true,
+      "reasonCode": null
+    }
+  ]
+}

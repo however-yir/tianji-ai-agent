@@ -1,0 +1,21 @@
+{
+  "id": "budget-exceeded",
+  "input": "推荐的课程再详细介绍一下",
+  "expectedRoute": "RECOMMEND",
+  "expectedRisk": "LOW",
+  "terminal": "STOP",
+  "policy": [
+    {
+      "actionType": "course.query",
+      "expectedAllowed": true,
+      "reasonCode": null
+    }
+  ],
+  "budget": [
+    {
+      "actionType": "course.query",
+      "duration": 3,
+      "expectedReason": "DUPLICATE_ACTION"
+    }
+  ]
+}

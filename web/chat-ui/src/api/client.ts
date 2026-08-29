@@ -255,3 +255,25 @@ export async function uploadAttachments(
   }
   return { uploadedIds, uploadedItems };
 }
+
+export async function postFeedback(
+  payload: { runId: string; messageId: string; rating: string; reasonCode?: string; comment?: string },
+  token: string,
+): Promise<{ rating: string } | null> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) {
+    headers.Authorization = token.startsWith("Bearer ") ? token : `Bearer ${token}`;
+  }
+  const res = await fetch(API_BASE_URL + "/feedback", {
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    throw new Error(`Feedback failed: ${res.status}`);
+  }
+  const json = await res.json();
+  return json && typeof json === "object" && "data" in json
+    ? (json as { data: { rating: string } }).data
+    : (json as { rating: string } | null);
+}

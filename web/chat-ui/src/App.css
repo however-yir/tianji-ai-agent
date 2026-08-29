@@ -1755,3 +1755,8 @@ strong.pay-amount {
   accent-color: var(--primary);
   cursor: pointer;
 }
+.feedback-row { display: flex; gap: 6px; margin-top: 6px; align-items: center; }
+.feedback-btn { border: 1px solid #e2e8f0; background: #fff; border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 0.8rem; }
+.feedback-btn.active { background: #e0f2fe; border-color: #7dd3fc; }
+.feedback-sent { font-size: 0.72rem; color: #64748b; }
+.feedback-error { font-size: 0.72rem; color: #dc2626; }

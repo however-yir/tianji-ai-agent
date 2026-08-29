@@ -1,0 +1,14 @@
+{
+  "id": "runtime-timeout",
+  "input": "推荐 Java 课程",
+  "expectedRoute": "RECOMMEND",
+  "expectedRisk": "LOW",
+  "terminal": "STOP",
+  "policy": [
+    {
+      "actionType": "course.query",
+      "expectedAllowed": true,
+      "reasonCode": null
+    }
+  ]
+}

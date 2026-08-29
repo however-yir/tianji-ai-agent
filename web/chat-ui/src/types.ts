@@ -79,6 +79,7 @@ export type RouteResult = {
   needMemory?: boolean;
   riskLevel?: string;
   handoffId?: string;
+  runId?: string;
   handoffSummary?: string;
 };
 

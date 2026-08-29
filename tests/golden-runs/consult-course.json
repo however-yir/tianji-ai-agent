@@ -1,0 +1,14 @@
+{
+  "id": "consult-course",
+  "input": "介绍一下 1589905661084430337 这门课适合谁，价格多少",
+  "expectedRoute": "CONSULT",
+  "expectedRisk": "LOW",
+  "terminal": "STOP",
+  "policy": [
+    {
+      "actionType": "course.query",
+      "expectedAllowed": true,
+      "reasonCode": null
+    }
+  ]
+}

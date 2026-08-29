@@ -1,5 +1,6 @@
 import { Suspense, lazy, useCallback, useState } from "react";
 import type { AgentHarnessTrace, ChatMessage, RouteResult } from "../types";
+import { postFeedback } from "../api/client";
 import {
   extractCourseCard,
   extractOrderCard,
@@ -75,6 +76,56 @@ export default function MessageBubble({
   onCopy,
   onRetry,
 }: MessageBubbleProps) {
+  const [feedbackState, setFeedbackState] = useState<"UP" | "DOWN" | "SENT" | "">("");
+  const [feedbackError, setFeedbackError] = useState(false);
+
+  const feedbackRow = () => {
+    if (message.role !== "assistant") return null;
+    return (
+      <div className="feedback-row" data-testid="feedback-row">
+        <button
+          className={feedbackState === "UP" ? "feedback-btn active" : "feedback-btn"}
+          data-testid="feedback-up"
+          onClick={() => sendFeedback(feedbackState === "UP" ? "SENT" : "UP")}
+        >
+          👍
+        </button>
+        <button
+          className={feedbackState === "DOWN" ? "feedback-btn active" : "feedback-btn"}
+          data-testid="feedback-down"
+          onClick={() => sendFeedback(feedbackState === "DOWN" ? "SENT" : "DOWN")}
+        >
+          👎
+        </button>
+        {feedbackState === "SENT" ? <span className="feedback-sent">已反馈</span> : null}
+        {feedbackError ? <span className="feedback-error">反馈失败</span> : null}
+      </div>
+    );
+  };
+
+  const sendFeedback = async (next: "UP" | "DOWN" | "SENT") => {
+    setFeedbackError(false);
+    if (next === "SENT") {
+      setFeedbackState("SENT");
+      return;
+    }
+    const runId = message.routeResult?.runId ?? "";
+    try {
+      await postFeedback(
+        {
+          runId,
+          messageId: message.id,
+          rating: next,
+          reasonCode: next === "DOWN" ? "OTHER" : "HELPFUL",
+        },
+        (window as unknown as { __tianjiApiToken?: string }).__tianjiApiToken ?? "",
+      );
+      setFeedbackState(next);
+    } catch {
+      setFeedbackError(true);
+    }
+  };
+
   const course = extractCourseCard(message.params ?? null);
   const order = extractOrderCard(message.params ?? null);
   const [speaking, setSpeaking] = useState(false);
@@ -165,6 +216,10 @@ export default function MessageBubble({
             ) : null}
           </div>
         ) : null}
+
+        {/* Feedback: 用户可对助手消息点赞/点踩，进入人工审核候选流 */}
+        {feedbackRow()}
+
 
         {/* Evidence Items */}
         {message.evidence?.length ? (

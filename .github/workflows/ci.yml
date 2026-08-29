@@ -50,6 +50,18 @@ jobs:
           set -euo pipefail
           python3 scripts/evaluation/evaluate_route_agent.py --output-dir artifacts/evaluation
 
+      - name: Golden run replay
+        run: |
+          set -euo pipefail
+          python3 scripts/replay_agent_run.py
+
+      - name: Agent release manifest (validate + generate)
+        run: |
+          set -euo pipefail
+          python3 scripts/generate_agent_manifest.py --verify
+          python3 scripts/generate_agent_manifest.py --output-dir artifacts/manifest \
+            --metrics artifacts/evaluation/agent-eval-report.json
+
       - name: Enterprise launch readiness
         run: bash scripts/validate_enterprise_launch.sh
 
@@ -79,6 +91,13 @@ jobs:
         with:
           name: route-evaluation
           path: artifacts/evaluation/
+
+      - name: Upload agent release manifest
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: agent-release-manifest
+          path: artifacts/manifest/
 
       - name: Compile Spring AI sample
         run: mvn -B -ntp -f src/my-spring-ai/pom.xml -DskipTests package
