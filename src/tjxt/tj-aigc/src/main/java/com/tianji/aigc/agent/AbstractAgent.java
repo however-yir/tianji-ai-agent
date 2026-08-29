@@ -2,10 +2,10 @@ package com.tianji.aigc.agent;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.IdUtil;
-import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.tianji.aigc.attachment.AttachmentContext;
 import com.tianji.aigc.attachment.AttachmentContextHolder;
 import com.tianji.aigc.config.ModelOptionsHolder;
+import com.tianji.aigc.config.StreamingProperties;
 import com.tianji.aigc.config.ModelOptionsHolder.ModelOptions;
 import com.tianji.aigc.config.ToolResultHolder;
 import com.tianji.aigc.enums.ChatEventTypeEnum;
@@ -17,13 +17,13 @@ import com.tianji.common.utils.UserContext;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
+import reactor.util.concurrent.Queues;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +34,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 public abstract class AbstractAgent implements Agent {
+    private static final String CHAT_MEMORY_CONVERSATION_ID_KEY = "chat_memory_conversation_id";
+
+
 
     @Resource
     private ChatClient dashScopeChatClient;
@@ -45,6 +48,8 @@ public abstract class AbstractAgent implements Agent {
     private ChatMemory chatMemory;
     @Resource(name = "messageChatMemoryAdvisor")
     private Advisor messageChatMemoryAdvisor;
+    @Resource
+    private StreamingProperties streamingProperties;
 
     // 输出结束的标记
     public static final ChatEventVO STOP_EVENT = ChatEventVO.builder().eventType(ChatEventTypeEnum.STOP.getValue()).build();
@@ -88,7 +93,9 @@ public abstract class AbstractAgent implements Agent {
         // 用 Sinks.Many 统一管理事件：模型增量通过 doOnNext 投递，
         // 终态事件（PARAM/TRACE/STOP）保证在 complete / cancel / error 三条路径上都会发一次，
         // 避免之前 takeWhile + concatWith 在取消时下游一起被取消、客户端收不到 STOP 事件的问题。
-        Sinks.Many<ChatEventVO> sink = Sinks.many().unicast().onBackpressureBuffer();
+        int bufferSize = streamingProperties == null ? 256 : streamingProperties.getBufferSize();
+        Sinks.Many<ChatEventVO> sink = Sinks.many().unicast()
+                .onBackpressureBuffer(Queues.<ChatEventVO>get(bufferSize).get());
         AtomicBoolean terminalEmitted = new AtomicBoolean(false);
 
         Runnable emitTerminal = () -> {
@@ -156,7 +163,13 @@ public abstract class AbstractAgent implements Agent {
                             .build();
                 })
                 .subscribe(
-                        sink::tryEmitNext,
+                        event -> {
+                            var result = sink.tryEmitNext(event);
+                            if (result.isFailure()) {
+                                log.warn("[Agent] SSE 缓冲溢出，丢弃增量事件, sessionId={}, cause={}",
+                                        sessionId, result);
+                            }
+                        },
                         err -> {
                             // 模型流异常：把异常也作为终态路径处理
                             GENERATE_STATUS.remove(sessionId);
@@ -232,18 +245,12 @@ public abstract class AbstractAgent implements Agent {
 
         String provider = options.hasProvider() ? options.provider() : "dashscope";
 
-        if ("openai".equalsIgnoreCase(provider)) {
-            OpenAiChatOptions oaiOptions = new OpenAiChatOptions();
-            if (options.hasModel()) oaiOptions.setModel(options.model());
-            if (options.hasTemperature()) oaiOptions.setTemperature(options.temperature());
-            request.options(oaiOptions);
-        }
-        else {
-            DashScopeChatOptions dsOptions = new DashScopeChatOptions();
-            if (options.hasModel()) dsOptions.setModel(options.model());
-            if (options.hasTemperature()) dsOptions.setTemperature(options.temperature());
-            request.options(dsOptions);
-        }
+        // Both providers (OpenAI and DashScope via its compatible endpoint) share the
+        // OpenAiChatOptions; the provider name above is a UI-facing brand label.
+        OpenAiChatOptions oaiOptions = new OpenAiChatOptions();
+        if (options.hasModel()) oaiOptions.setModel(options.model());
+        if (options.hasTemperature()) oaiOptions.setTemperature(options.temperature());
+        request.options(oaiOptions);
     }
 
     protected boolean useAttachmentContext() {
@@ -275,7 +282,7 @@ public abstract class AbstractAgent implements Agent {
     @Override
     public Map<String, Object> advisorParams(String sessionId, String requestId) {
         String conversationId = ChatService.getConversationId(sessionId);
-        return Map.of(AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY, conversationId);
+        return Map.of(CHAT_MEMORY_CONVERSATION_ID_KEY, conversationId);
     }
 
     @Override

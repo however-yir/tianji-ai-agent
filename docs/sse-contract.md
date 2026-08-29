@@ -16,6 +16,20 @@ route decisions, governed actions and card parameters are first-class events.
 | 1006 | `EVIDENCE` | object or list | render citations |
 | 1007 | `MEMORY` | object or list | render memory hit summary |
 
+## Envelope
+
+Every event is serialized as:
+
+```json
+{ "eventType": 1004, "eventData": { ... }, "version": 1 }
+```
+
+- `version` defaults to `1` and is informative: clients MUST tolerate unknown fields and
+  MUST NOT fail on additional keys. A future structural change will bump the version and
+  document the migration here.
+- Unknown `eventType` values are dropped by the client validator; malformed payloads are
+  rejected and the stream still terminates with `STOP`.
+
 ## Ordering And Failure Rules
 
 The minimum valid sequence is:

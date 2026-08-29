@@ -64,6 +64,40 @@ class SseEventContractTest {
         assertThat(events).extracting(ChatEventVO::getEventType).containsExactly(1004, 1001, 1002);
     }
 
+    @Test
+    void shouldEmitStopExactlyOnceUnderConcurrentErrorAndCompletionRace() {
+        List<ChatEventVO> events = SseEventContract.terminate(
+                        routeEvent(),
+                        Flux.concat(
+                                Flux.just(dataEvent("part-1")),
+                                Flux.error(new RuntimeException("cancel race"))
+                        ).onErrorResume(ex -> Flux.just(stopEvent())),
+                        "s-race")
+                .collectList()
+                .block();
+
+        // child stream crashed after partial data and then injected its own STOP;
+        // the contract must not append a second STOP
+        assertThat(events).extracting(ChatEventVO::getEventType).containsExactly(1004, 1001, 1002);
+        assertThat(events).filteredOn(e -> e.getEventType() == ChatEventTypeEnum.STOP.getValue())
+                .hasSize(1);
+    }
+
+    @Test
+    void shouldNotEmitAnyDataAfterTerminalStop() {
+        List<ChatEventVO> events = SseEventContract.terminate(
+                        routeEvent(),
+                        Flux.concat(
+                                Flux.just(dataEvent("before-stop"), stopEvent()),
+                                Flux.just(dataEvent("late-after-stop"))
+                        ),
+                        "s-late")
+                .collectList()
+                .block();
+
+        assertThat(events).extracting(ChatEventVO::getEventType).containsExactly(1004, 1001, 1002);
+    }
+
     private ChatEventVO routeEvent() {
         return ChatEventVO.builder()
                 .eventType(ChatEventTypeEnum.ROUTE.getValue())

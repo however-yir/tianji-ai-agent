@@ -1559,6 +1559,8 @@ strong.pay-amount {
 .ev-tag.risk-low { background: #d1fae5; color: #065f46; }
 .ev-tag.risk-medium { background: #fef3c7; color: #92400e; }
 .ev-tag.risk-high { background: #fee2e2; color: #991b1b; }
+.ev-tag.handoff { background: #ffe4e6; color: #9f1239; }
+.route-handoff-summary { margin: 6px 0 0; font-size: 0.75rem; color: #64748b; }
 
 /* ── Evidence V2 ────────────────────────────────────── */
 .evidence-section-v2 {

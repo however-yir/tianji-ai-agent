@@ -21,4 +21,10 @@ public class ChatEventVO {
      */
     private int eventType;
 
+    /**
+     * SSE envelope protocol version. Clients must tolerate unknown fields; the
+     * version only guards future structural changes.
+     */
+    private int version = 1;
+
 }

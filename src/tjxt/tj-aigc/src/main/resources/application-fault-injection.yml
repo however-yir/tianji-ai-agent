@@ -1,0 +1,11 @@
+# Deterministic downstream-failure simulation (acceptance/demo only, never production).
+tj:
+  ai:
+    fault-injection:
+      scenario: ${AI_FAULT_SCENARIO:}
+      slow-response-millis: ${AI_FAULT_SLOW_MILLIS:300}
+spring:
+  ai:
+    openai:
+      chat:
+        enabled: false

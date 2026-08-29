@@ -78,6 +78,8 @@ export type RouteResult = {
   needRag?: boolean;
   needMemory?: boolean;
   riskLevel?: string;
+  handoffId?: string;
+  handoffSummary?: string;
 };
 
 export type EvidenceCard = {

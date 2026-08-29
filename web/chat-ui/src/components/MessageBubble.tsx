@@ -152,7 +152,17 @@ export default function MessageBubble({
                   {message.routeResult.riskLevel}
                 </span>
               ) : null}
+              {message.routeResult.handoffId ? (
+                <span className="ev-tag handoff" data-testid="handoff-ticket">
+                  已转人工 · {message.routeResult.handoffId}
+                </span>
+              ) : null}
             </div>
+            {message.routeResult.handoffSummary ? (
+              <p className="route-handoff-summary" data-testid="handoff-summary">
+                {message.routeResult.handoffSummary}
+              </p>
+            ) : null}
           </div>
         ) : null}
 

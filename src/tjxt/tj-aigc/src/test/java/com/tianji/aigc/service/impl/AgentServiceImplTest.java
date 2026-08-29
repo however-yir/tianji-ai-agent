@@ -226,6 +226,9 @@ class AgentServiceImplTest {
         AgentServiceImpl.RouteResult route = (AgentServiceImpl.RouteResult) events.get(0).getEventData();
         assertThat(route.nextAgent()).isEqualTo(AgentTypeEnum.HUMAN_HANDOFF.getAgentName());
         assertThat(route.routeReason()).contains("投诉");
+        // handoff contract: a ticket id travels with the ROUTE event and is audit-lookupable
+        assertThat(route.handoffId()).startsWith("HF-");
+        assertThat(route.handoffSummary()).contains("投诉");
     }
 
     @Test
