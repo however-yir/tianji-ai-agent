@@ -20,6 +20,13 @@
   immutably-tagged digest into the workflow summary.
 - SSE envelope `version` field (default `1`); dependency baseline decision record
   ([docs/dependency-baseline.md](docs/dependency-baseline.md)).
+- **AgentOps Runtime Governance III**: execution budget (model/tool caps, deadline,
+  duplicate/loop detection), versioned prompt registry with checksums, run records with
+  optional cost estimation, golden-run replay (9 fixtures, blocking), agent release
+  manifest (blocking validation), feedback loop (👍/👎 + review candidates), memory
+  governance (trim/TTL config/redaction + session deletion), reason codes, ModelProfile
+  deterministic selection, `verify.sh`/`Makefile`/`agentops.py` developer entry points,
+  ADR set and AgentOps docs.
 
 ### Changed
 

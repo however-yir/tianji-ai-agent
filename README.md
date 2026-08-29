@@ -16,6 +16,20 @@
 [![CI](https://img.shields.io/badge/CI-Core%20Path%20Blocking-success)](.github/workflows/ci.yml)
 [![Status](https://img.shields.io/badge/Status-Business%20Agent%20Showcase-blue)](#)
 
+## 核心叙事升级（AgentOps）
+
+> **LLMs propose business actions, while deterministic policies, execution budgets and
+> replayable contracts govern what actually runs.**
+>
+> No private chain-of-thought is stored or exposed — runs record structured operational
+> evidence (route, policy reason codes, budget decisions, prompt/model metadata, tool
+> outcomes, tokens/cost when known) only.
+
+执行预算（模型/工具调用上限、运行时限、重复动作与 A-B-A-B 循环检测）在
+Harness/Agent 运行时层强制；Prompt 以版本化文件 + checksum 管理（Nacos 仅为受控覆盖）；
+每次运行写入可复现的 Run Record；反馈经人工审核进入评测闭环。详见
+[docs/agentops.md](docs/agentops.md) 与 [docs/evidence/README.md](docs/evidence/README.md)。
+
 ## Why this project
 
 1. **Business state machine first** — `BUY` can only produce `order.preview`; it reaches `USER_CONFIRM_REQUIRED`, never LLM-initiated payment.
@@ -178,6 +192,8 @@ sequenceDiagram
 | Agent governance & SSE contract tests | blocking | `mvn -f src/tjxt/tj-aigc/pom.xml verify` |
 | Core coverage gate (JaCoCo ≥ 90%) | blocking | `mvn -f src/tjxt/tj-aigc/pom.xml verify` (jacoco:check) |
 | One-click acceptance | blocking job | `bash scripts/acceptance.sh` |
+| Golden run replay (9 fixtures) | blocking | `python3 scripts/replay_agent_run.py` + `GoldenRunReplayTest` |
+| Agent release manifest validation | blocking | `python3 scripts/generate_agent_manifest.py --verify` |
 | Helm lint + template | blocking job | `helm lint helm/tianji-ai-agent` |
 | Ruff / Gitleaks / Checkstyle / SpotBugs | blocking | CI `python-quality`, `secret-scan`, `java-quality` |
 | OWASP + Trivy vulnerability scan | advisory | CI `advisory-owasp-scan`, `advisory-image-scan` |

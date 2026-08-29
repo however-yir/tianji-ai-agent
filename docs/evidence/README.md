@@ -156,3 +156,49 @@ Dependency upgrade decision record: [dependency-baseline.md](../dependency-basel
 `publish-image.yml` builds an immutable `sha-<git-sha>` GHCR tag with OCI labels, SBOM,
 provenance and prints the digest into the workflow summary; the Helm chart lints and
 renders in blocking CI, and deploys with non-root securityContext.
+
+## AgentOps Q&A Pack (III)
+
+### Q: Prompt 改坏了怎么办？
+
+`PromptRegistry` + versioned `prompts/*/v<n>.md` (SHA-256 checksums); candidate prompt goes
+through offline evaluation + golden replay before rollout. Every run records
+`promptId/promptVersion/promptChecksum`. Evidence: `PromptRegistryTest`, `GoldenRunReplayTest`,
+[agent-upgrade-policy.md](../agent-upgrade-policy.md).
+
+### Q: Agent 无限调用 Tool 怎么办？
+
+`ExecutionBudgetState` caps model/tool calls, deadlines and repeated actions; `ACTION_LOOP`
+detects A-B-A-B cycles. Evidence: `ExecutionBudgetGuardTest`, `BudgetStateTest`.
+
+### Q: 这一次「事故」怎么复现？
+
+`AgentRunRecord` (runId + prompt + model + budget + actions) + deterministic replay of the
+golden contract (`scripts/replay_agent_run.py`, `GoldenRunReplayTest`). No chain-of-thought
+is stored; the replay reproduces decisions, not hidden reasoning.
+
+### Q: 你怎么知道哪个模型更合适？
+
+`tj.ai.model-profiles` + baseline/candidate comparison
+(`scripts/evaluation/compare_agent_release.py`) weighting quality / safety / latency / cost.
+Live model evaluation remains manual.
+
+### Q: Agent 花多少钱？
+
+Token usage from provider metadata + `tj.ai.model-pricing` table when configured;
+otherwise `costKnown=false`. No fabricated 0-cost. Evidence: `RunRecorderTest`.
+
+### Q: 聊天记录会无限增长吗？
+
+Bounded memory: `tj.ai.memory.max-turns` trim, 30-day rolling TTL (configurable), session
+deletion clears memory + attachments. Evidence: `RedisChatMemoryTest` + `DELETE /session/{id}`.
+
+### Q: 你怎么用真实用户反馈优化模型？
+
+&#128077;&#128078; on assistant messages -> validated feedback -> candidate cases ->
+**human review** -> evaluation dataset. Negative feedback never auto-enters the dataset.
+
+### Q: 你保存模型思维链吗？
+
+**No.** Tianji does not persist or expose private chain-of-thought. It records structured
+operational decisions and observable evidence only (see [ADR-002](../adr/ADR-002-no-chain-of-thought-persistence.md)).
