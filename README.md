@@ -312,9 +312,10 @@ mvn -B -ntp -f src/tjxt/tj-aigc/pom.xml -Pmanual-integration-tests test
 仓库把”展示项目必须稳定”的链路设为阻断：
 
 - `web/chat-ui`：lint、unit test、build
-- `tj-aigc`：核心单元测试、Harness governance、SSE contract、JaCoCo 核心覆盖率门禁
-- Python：smoke tests、Ruff、offline route contract evaluator
+- `tj-aigc`：核心单元测试、Harness governance、SSE contract、JaCoCo 核心覆盖率门禁（≥90%）
+- Python：smoke tests、Ruff、offline route contract evaluator（回归阈值 ≥98% accuracy、0 unsafe route）
 - 一键 acceptance：no-LLM course recommendation, consultation, preview, denial, handoff and timeout paths
+- Java 质量门禁：Checkstyle、SpotBugs（DTO/传输载体的 EI_EXPOSE_REP 系噪音已按类豁免）
 - Secret scan：Gitleaks
 - Enterprise launch readiness：生产上线方案、发布清单、Runbook 和 Agent 治理检查
 

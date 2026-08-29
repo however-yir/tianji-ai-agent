@@ -155,10 +155,10 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
                         .build()
         );
 
-        final String TODAY = "当天";
-        final String LAST_30_DAYS = "最近30天";
-        final String LAST_YEAR = "最近1年";
-        final String MORE_THAN_YEAR = "1年以上";
+        final String today = "当天";
+        final String last30Days = "最近30天";
+        final String lastYear = "最近1年";
+        final String moreThanYear = "1年以上";
 
         // 当前时间
         LocalDate now = LocalDateTime.now().toLocalDate();
@@ -168,13 +168,16 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
             // 计算两个日期之间的天数差
             long between = Math.abs(ChronoUnit.DAYS.between(vo.getUpdateTime().toLocalDate(), now));
             if (between == 0) {
-                return TODAY;
-            } else if (between <= 30) {
-                return LAST_30_DAYS;
-            } else if (between <= 365) {
-                return LAST_YEAR;
-            } else {
-                return MORE_THAN_YEAR;
+                return today;
+            }
+            else if (between <= 30) {
+                return last30Days;
+            }
+            else if (between <= 365) {
+                return lastYear;
+            }
+            else {
+                return moreThanYear;
             }
         });
     }

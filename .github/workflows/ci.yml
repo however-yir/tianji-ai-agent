@@ -45,6 +45,11 @@ jobs:
           python -m pip install pytest
           pytest -q tests
 
+      - name: Offline route regression gate
+        run: |
+          set -euo pipefail
+          python3 scripts/evaluation/evaluate_route_agent.py --output-dir artifacts/evaluation
+
       - name: Enterprise launch readiness
         run: bash scripts/validate_enterprise_launch.sh
 
@@ -58,8 +63,8 @@ jobs:
       - name: Install tj-aigc dependency chain
         run: mvn -B -ntp -f src/tjxt/pom.xml -pl tj-aigc -am -DskipTests install
 
-      - name: Run tj-aigc unit tests
-        run: mvn -B -ntp -f src/tjxt/tj-aigc/pom.xml test
+      - name: Run tj-aigc tests and core coverage gate
+        run: mvn -B -ntp -f src/tjxt/tj-aigc/pom.xml verify
 
       - name: Upload JaCoCo coverage report
         uses: actions/upload-artifact@v7
@@ -68,16 +73,22 @@ jobs:
           name: jacoco-report
           path: src/tjxt/tj-aigc/target/site/jacoco/
 
+      - name: Upload route evaluation report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: route-evaluation
+          path: artifacts/evaluation/
+
       - name: Compile Spring AI sample
         run: mvn -B -ntp -f src/my-spring-ai/pom.xml -DskipTests package
 
       - name: Compile OpenAI Java sample
         run: mvn -B -ntp -f src/openai-java-demo/pom.xml -DskipTests package
 
-  advisory-python-quality:
-    name: Advisory Python Quality
+  agent-acceptance-gate:
+    name: Agent Acceptance Smoke Gate
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -87,39 +98,66 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Ruff advisory
-        continue-on-error: true
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Run one-click acceptance suite (no LLM required)
+        run: |
+          set -euo pipefail
+          python3 scripts/run_acceptance.py --skip-frontend
+
+      - name: Upload acceptance report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: acceptance-report
+          path: artifacts/acceptance/
+
+  python-quality:
+    name: Python Quality (Ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Ruff check
         run: |
           set -euo pipefail
           python -m pip install --upgrade pip
           python -m pip install ruff
           ruff check tests scripts
 
-      - name: Compile advisory Python files
-        continue-on-error: true
+      - name: Compile Python files
         run: |
           set -euo pipefail
           python -m compileall -q tests scripts
 
-  advisory-secret-scan:
-    name: Advisory Secret Scan
+  secret-scan:
+    name: Secret Scan
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Gitleaks advisory
+      - name: Gitleaks scan
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  advisory-java-quality:
-    name: Advisory Java Quality (Checkstyle + SpotBugs)
+  java-quality:
+    name: Java Quality Gates (Checkstyle + SpotBugs)
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -134,12 +172,10 @@ jobs:
       - name: Install tj-aigc dependency chain
         run: mvn -B -ntp -f src/tjxt/pom.xml -pl tj-aigc -am -DskipTests install
 
-      - name: Checkstyle advisory
-        continue-on-error: true
+      - name: Checkstyle
         run: mvn -B -ntp -f src/tjxt/tj-aigc/pom.xml checkstyle:check
 
-      - name: SpotBugs advisory
-        continue-on-error: true
+      - name: SpotBugs
         run: mvn -B -ntp -f src/tjxt/tj-aigc/pom.xml spotbugs:check
 
   advisory-owasp-scan:

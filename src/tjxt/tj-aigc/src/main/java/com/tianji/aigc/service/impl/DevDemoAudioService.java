@@ -23,7 +23,8 @@ public class DevDemoAudioService implements AudioService {
             String payload = "dev-demo tts preview: " + text;
             emitter.send(payload.getBytes(StandardCharsets.UTF_8));
             emitter.complete();
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             emitter.completeWithError(e);
         }
         return emitter;

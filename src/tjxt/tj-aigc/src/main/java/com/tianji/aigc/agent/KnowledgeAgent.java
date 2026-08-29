@@ -62,7 +62,8 @@ public class KnowledgeAgent extends AbstractAgent {
                     // Return local advisor as base — the KnowledgeOps enrichment happens via system prompt context
                     // This is the fallback path within a fallback: platform was reached but we still rely on local RAG for the advisor
                 }
-            } catch (Exception e) {
+            }
+            catch (Exception e) {
                 log.warn("KnowledgeAgent: KnowledgeOps platform unavailable, falling back to local Advisor: {}", e.getMessage());
             }
         }

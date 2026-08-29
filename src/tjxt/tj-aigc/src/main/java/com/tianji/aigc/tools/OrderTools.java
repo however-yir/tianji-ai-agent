@@ -58,7 +58,8 @@ public class OrderTools {
                     Map.of("courseIds", courseIds)
             );
             return agentHarnessService.execute(action).resultAs(PrePlaceOrder.class);
-        } finally {
+        }
+        finally {
             // 工具在流式/线程池线程上执行，必须清理 ThreadLocal，否则线程复用后会把当前用户身份泄漏给下一个请求
             UserContext.removeUser();
         }

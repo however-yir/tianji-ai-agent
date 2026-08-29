@@ -66,7 +66,8 @@ public abstract class AbstractAgent implements Agent {
             return this.getChatClientRequest(sessionId, requestId, question)
                     .call()
                     .content();
-        } finally {
+        }
+        finally {
             if (this.useAttachmentContext()) {
                 AttachmentContextHolder.clear(sessionId);
             }
@@ -115,7 +116,8 @@ public abstract class AbstractAgent implements Agent {
                 }
                 sink.tryEmitNext(STOP_EVENT);
                 sink.tryEmitComplete();
-            } finally {
+            }
+            finally {
                 if (this.useAttachmentContext()) {
                     AttachmentContextHolder.clear(sessionId);
                 }
@@ -235,7 +237,8 @@ public abstract class AbstractAgent implements Agent {
             if (options.hasModel()) oaiOptions.setModel(options.model());
             if (options.hasTemperature()) oaiOptions.setTemperature(options.temperature());
             request.options(oaiOptions);
-        } else {
+        }
+        else {
             DashScopeChatOptions dsOptions = new DashScopeChatOptions();
             if (options.hasModel()) dsOptions.setModel(options.model());
             if (options.hasTemperature()) dsOptions.setTemperature(options.temperature());

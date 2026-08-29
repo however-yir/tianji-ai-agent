@@ -12,7 +12,6 @@ import com.tianji.aigc.vo.ChatEventVO;
 import com.tianji.common.utils.TokenContext;
 import io.reactivex.Flowable;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import java.util.HashMap;
@@ -80,7 +79,8 @@ public class AppAgentChatService implements ChatService {
                     })
                     .concatWith(Flux.just(STOP_EVENT));
 
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             throw new RuntimeException(e);
         }
     }

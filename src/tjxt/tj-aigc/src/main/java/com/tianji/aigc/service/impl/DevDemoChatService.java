@@ -84,13 +84,16 @@ public class DevDemoChatService implements ChatService {
                                 .build());
                     }
                     sink.complete();
-                } catch (InterruptedException e) {
+                }
+                catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     sink.error(e);
-                } catch (Exception e) {
+                }
+                catch (Exception e) {
                     log.error("dev-demo 流式响应失败", e);
                     sink.error(e);
-                } finally {
+                }
+                finally {
                     stopSignals.remove(resolvedSessionId);
                 }
             });
@@ -115,14 +118,18 @@ public class DevDemoChatService implements ChatService {
         if (attachmentContext != null && attachmentContext.hasSources()) {
             payload.putAll(attachmentContext.toParamMap());
             payload.put("capability", "attachment-qa");
-        } else if (normalized.contains("附件上下文")) {
+        }
+        else if (normalized.contains("附件上下文")) {
             payload.put("sources", extractAttachmentNames(normalized));
             payload.put("capability", "attachment-demo");
-        } else if (normalized.contains("流程") || normalized.toLowerCase().contains("mermaid")) {
+        }
+        else if (normalized.contains("流程") || normalized.toLowerCase().contains("mermaid")) {
             payload.put("capability", "mermaid-demo");
-        } else if (normalized.contains("公式") || normalized.toLowerCase().contains("math")) {
+        }
+        else if (normalized.contains("公式") || normalized.toLowerCase().contains("math")) {
             payload.put("capability", "math-demo");
-        } else {
+        }
+        else {
             payload.put("capability", "general-demo");
         }
         return payload;

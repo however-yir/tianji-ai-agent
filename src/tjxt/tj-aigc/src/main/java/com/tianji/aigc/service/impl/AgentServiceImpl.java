@@ -75,7 +75,8 @@ public class AgentServiceImpl implements ChatService {
         try {
             String rawResult = routeAgent.process(question, sessionId);
             route = applyHumanHandoffPolicy(question, parseRouteResult(rawResult));
-        } catch (RuntimeException routeFailure) {
+        }
+        catch (RuntimeException routeFailure) {
             // RouteAgent itself blew up (model timeout, Nacos config missing, JSON parse error...).
             // Don't fail the whole SSE — degrade to HUMAN_HANDOFF so the user still gets a response.
             log.error("[Agent路由] RouteAgent执行异常，回退到人工兜底, sessionId={}, error={}",
@@ -117,7 +118,8 @@ public class AgentServiceImpl implements ChatService {
 
         try {
             return completeSseStream(routeEvent, agent.processStream(question, sessionId), sessionId);
-        } catch (RuntimeException streamFailure) {
+        }
+        catch (RuntimeException streamFailure) {
             log.warn("[Agent路由] 子Agent启动流失败，sessionId={}, agent={}",
                     sessionId, agentTypeEnum, streamFailure);
             return completeSseStream(routeEvent, Flux.error(streamFailure), sessionId);
@@ -199,7 +201,8 @@ public class AgentServiceImpl implements ChatService {
                         parseCandidateAgents(parsed.get("candidateAgents"), nextAgent)
                 );
             }
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             log.debug("Route result is not structured JSON, using raw text: {}", raw);
         }
         // Plain text fallback: the LLM didn't follow the JSON contract.
@@ -238,7 +241,8 @@ public class AgentServiceImpl implements ChatService {
         if (value == null) return fallback;
         try {
             return Double.parseDouble(String.valueOf(value));
-        } catch (NumberFormatException e) {
+        }
+        catch (NumberFormatException e) {
             return fallback;
         }
     }

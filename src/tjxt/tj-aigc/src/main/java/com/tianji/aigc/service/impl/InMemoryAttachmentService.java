@@ -21,7 +21,6 @@ import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -166,7 +165,8 @@ public class InMemoryAttachmentService implements AttachmentService {
                     && !(header.length >= 2 && header[0] == (byte) 0xFF && header[1] == (byte) 0xD8)) {
                 throw new BadRequestException("文件内容与 JPEG 扩展名不匹配。");
             }
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             throw new BadRequestException(400, "无法读取文件内容。", e);
         }
     }
@@ -185,7 +185,8 @@ public class InMemoryAttachmentService implements AttachmentService {
                 return normalizeText(extractImageText(file));
             }
             return normalizeText(extractPlainText(file));
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             throw new IllegalStateException("解析附件失败：" + fileName, e);
         }
     }
@@ -239,7 +240,8 @@ public class InMemoryAttachmentService implements AttachmentService {
             int exitCode;
             try {
                 exitCode = process.waitFor();
-            } catch (InterruptedException e) {
+            }
+            catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw new IllegalStateException("图片 OCR 处理中断", e);
             }
@@ -249,21 +251,25 @@ public class InMemoryAttachmentService implements AttachmentService {
             }
             log.warn("图片 OCR 失败，exitCode={}, logs={}", exitCode, logs);
             return "未能从图片中提取到清晰文字。";
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             log.warn("当前环境未安装 tesseract，图片 OCR 将返回占位提示。 fileName={}", file.getOriginalFilename());
             return "当前运行环境未安装 OCR 引擎，暂时无法识别图片中的文字。";
-        } finally {
+        }
+        finally {
             try {
                 Files.walk(tempDir)
                         .sorted(Comparator.reverseOrder())
                         .forEach(path -> {
                             try {
                                 Files.deleteIfExists(path);
-                            } catch (IOException ignore) {
+                            }
+                            catch (IOException ignore) {
                                 // ignore cleanup failure
                             }
                         });
-            } catch (IOException ignore) {
+            }
+            catch (IOException ignore) {
                 // ignore cleanup failure
             }
         }
@@ -330,7 +336,8 @@ public class InMemoryAttachmentService implements AttachmentService {
                         ? current.substring(Math.max(0, current.length() - CHUNK_OVERLAP))
                         : current.toString();
                 current = new StringBuilder(overlap).append('\n').append(paragraph);
-            } else {
+            }
+            else {
                 if (current.length() > 0) {
                     current.append("\n\n");
                 }
@@ -427,7 +434,8 @@ public class InMemoryAttachmentService implements AttachmentService {
     }
 
     private Long currentUserId() {
-        return UserContext.getUser() == null ? 0L : UserContext.getUser();
+        Long userId = UserContext.getUser();
+        return userId == null ? Long.valueOf(0L) : userId;
     }
 
     private void cleanupExpired() {

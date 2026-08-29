@@ -84,7 +84,8 @@ public class RecommendAgent extends AbstractAgent {
                         log.debug("RecommendAgent: enriched with KnowledgeOps graph search");
                     }
                 }
-            } catch (Exception e) {
+            }
+            catch (Exception e) {
                 log.warn("RecommendAgent: KnowledgeOps platform unavailable, using local RAG: {}", e.getMessage());
             }
         }

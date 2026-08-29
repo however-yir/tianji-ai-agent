@@ -48,7 +48,8 @@ public class OpenAIAudioServiceImpl implements AudioService {
                         // 获取响应输出的数据，并发送到响应体中
                         byte[] audioBytes = speechResponse.getResult().getOutput();
                         emitter.send(audioBytes);
-                    } catch (IOException | IllegalStateException e) {
+                    }
+                    catch (IOException | IllegalStateException e) {
                         if (completed.compareAndSet(false, true)) {
                             emitter.completeWithError(e);
                         }

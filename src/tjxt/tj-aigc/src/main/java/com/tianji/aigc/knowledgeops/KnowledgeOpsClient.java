@@ -80,7 +80,8 @@ public class KnowledgeOpsClient {
         if (resp != null && resp.containsKey("data")) {
             try {
                 return (List<Map<String, Object>>) resp.get("data");
-            } catch (Exception e) {
+            }
+            catch (Exception e) {
                 log.warn("Failed to parse events", e);
             }
         }
@@ -100,7 +101,8 @@ public class KnowledgeOpsClient {
             ResponseEntity<String> resp = restTemplate.exchange(
                     properties.getBaseUrl() + path, HttpMethod.POST, new HttpEntity<>(body, headers), String.class);
             if (resp.getBody() != null) return objectMapper.readValue(resp.getBody(), new TypeReference<>() {});
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             log.error("KnowledgeOps POST {} failed: {}", path, e.getMessage());
         }
         return Collections.emptyMap();
@@ -114,7 +116,8 @@ public class KnowledgeOpsClient {
             ResponseEntity<String> resp = restTemplate.exchange(
                     properties.getBaseUrl() + path, HttpMethod.GET, new HttpEntity<>(headers), String.class);
             if (resp.getBody() != null) return objectMapper.readValue(resp.getBody(), new TypeReference<>() {});
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             log.error("KnowledgeOps GET {} failed: {}", path, e.getMessage());
         }
         return Collections.emptyMap();

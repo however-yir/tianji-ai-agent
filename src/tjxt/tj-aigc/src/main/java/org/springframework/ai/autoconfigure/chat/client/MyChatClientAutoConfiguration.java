@@ -13,7 +13,6 @@ import org.springframework.ai.chat.client.observation.ChatClientObservationConve
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -27,7 +26,7 @@ import org.springframework.context.annotation.Scope;
 @ConditionalOnProperty(prefix = "spring.ai.chat.my-client", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class MyChatClientAutoConfiguration {
 
-    private static final Logger logger = LoggerFactory.getLogger(MyChatClientAutoConfiguration.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(MyChatClientAutoConfiguration.class);
 
     @Bean
     @ConditionalOnMissingBean
@@ -68,7 +67,7 @@ public class MyChatClientAutoConfiguration {
     @ConditionalOnProperty(prefix = ChatClientBuilderProperties.CONFIG_PREFIX + ".observations", name = "include-input",
             havingValue = "true")
     ChatClientInputContentObservationFilter chatClientInputContentObservationFilter() {
-        logger.warn(
+        LOGGER.warn(
                 "You have enabled the inclusion of the input content in the observations, with the risk of exposing sensitive or private information. Please, be careful!");
         return new ChatClientInputContentObservationFilter();
     }

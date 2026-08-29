@@ -72,7 +72,8 @@ public class SystemPromptConfig {
                     applyConfig(target, info, dataId);
                 }
             });
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             log.error("加载配置失败", e);
         }
     }
@@ -84,7 +85,8 @@ public class SystemPromptConfig {
         if (StringUtils.hasText(config)) {
             target.set(config);
             log.info("读取系统提示词成功，dataId：{}，内容为：{}", dataId, config);
-        } else {
+        }
+        else {
             log.warn("读取系统提示词为空，dataId：{}，保留兜底提示词", dataId);
         }
     }

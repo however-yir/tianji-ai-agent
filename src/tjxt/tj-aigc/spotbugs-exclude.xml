@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    SpotBugs suppressions for tj-aigc.
+
+    EI_EXPOSE_REP / EI_EXPOSE_REP2: reported across dozens of Lombok-built DTO/VO/config
+    carriers that must keep plain getters for JSON transport. Defensive copies belong to
+    domain objects, not to these transfer carriers, so the pattern is excluded rather
+    than rewriting 40+ stable classes.
+-->
+<FindBugsFilter>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+    <Match>
+        <Class name="com.tianji.aigc.config.DevDemoProperties"/>
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE"/>
+    </Match>
+    <Match>
+        <Class name="com.tianji.aigc.service.impl.AgentServiceImpl"/>
+        <Bug pattern="REC_CATCH_EXCEPTION"/>
+    </Match>
+    <!-- DevDemoChatService: the formatted text blocks are reply content, not console output.
+         Literal \n keeps the payload platform-independent; %n would embed CRLF on Windows. -->
+    <Match>
+        <Class name="com.tianji.aigc.service.impl.DevDemoChatService"/>
+        <Bug pattern="VA_FORMAT_STRING_USES_NEWLINE"/>
+    </Match>
+</FindBugsFilter>

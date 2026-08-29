@@ -6,7 +6,6 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -46,13 +45,9 @@ public class HarnessEventRecorder {
             }
             traces.add(observation.toTraceMap());
             ToolResultHolder.put(observation.requestId(), TRACE_FIELD, traces);
-        } finally {
+        }
+        finally {
             lock.unlock();
-            // Drop the lock entry once there is no contention; keeps the map small
-            // across a long-running process and avoids leaking memory per request id.
-            if (!lock.isHeldByCurrentThread() && !lock.hasQueuedThreads()) {
-                requestLocks.remove(observation.requestId(), lock);
-            }
         }
     }
 }

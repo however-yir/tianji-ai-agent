@@ -5,6 +5,7 @@ import org.springframework.ai.model.Media;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * @author zzj
@@ -41,5 +42,21 @@ public class MyAssistantMessage extends AssistantMessage {
 
     public void setParams(Map<String, Object> params) {
         this.params = params;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof MyAssistantMessage that)) {
+            return false;
+        }
+        return super.equals(o) && Objects.equals(params, that.params);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), params);
     }
 }
